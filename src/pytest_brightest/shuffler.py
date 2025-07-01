@@ -1,7 +1,7 @@
 """Test shuffling functionality for pytest-brightest."""
 
 import random
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class ShufflerOfTests:
@@ -33,6 +33,25 @@ class ShufflerOfTests:
         """Shuffle a list of items in place using the configured random seed."""
         if items:
             self._random.shuffle(items)
+
+    def shuffle_items_by_file_in_place(self, items: List[Any]) -> None:
+        """Shuffle test items within each file while preserving file order."""
+        if not items:
+            return
+        file_groups: Dict[str, List[Any]] = {}
+        file_order = []
+        for item in items:
+            file_path = getattr(item, "fspath", str(getattr(item, "path", "unknown")))
+            file_path_str = str(file_path)
+            if file_path_str not in file_groups:
+                file_groups[file_path_str] = []
+                file_order.append(file_path_str)
+            file_groups[file_path_str].append(item)
+        items.clear()
+        for file_path in file_order:
+            file_items = file_groups[file_path]
+            self._random.shuffle(file_items)
+            items.extend(file_items)
 
 
 def create_shuffler(seed: Optional[int] = None) -> ShufflerOfTests:
