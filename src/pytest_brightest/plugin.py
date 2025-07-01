@@ -31,7 +31,7 @@ class BrightestPlugin:
         else:
             self.shuffle_enabled = False
         shuffle_by_option = config.getoption("--shuffle-by", "suite")
-        if shuffle_by_option in ["suite", "file"]:
+        if shuffle_by_option in ["suite", "file", "files"]:
             self.shuffle_by = shuffle_by_option
         else:
             self.shuffle_by = "suite"
@@ -61,11 +61,8 @@ class BrightestPlugin:
                 self.shuffler.shuffle_items_in_place(items)
             elif self.shuffle_by == "file":
                 self.shuffler.shuffle_items_by_file_in_place(items)
-
-    def print_test_name(self, nodeid: str) -> None:
-        """Print the fully-qualified test name if details mode is enabled."""
-        if self.details:
-            print(f"{nodeid}")
+            elif self.shuffle_by == "files":
+                self.shuffler.shuffle_files_and_tests_in_place(items)
 
 
 # Global plugin instance
@@ -95,9 +92,9 @@ def pytest_addoption(parser):
     )
     group.addoption(
         "--shuffle-by",
-        choices=["suite", "file"],
+        choices=["suite", "file", "files"],
         default="suite",
-        help="Shuffle tests by suite (all tests) or by file (within each test file)",
+        help="Shuffle tests by suite (all tests), file (within each test file), or files (file order and tests within files)",
     )
     group.addoption(
         "--seed",
@@ -129,25 +126,22 @@ def pytest_collection_modifyitems(config, items):
     if _plugin.enabled:
         _plugin.shuffle_tests(items)
 
-
-def pytest_runtest_logstart(nodeid, location):
-    """Handle test start logging."""
+def pytest_runtest_makereport(item, call):
+    """Print test outcome and duration when a test is executed."""
     if _plugin.enabled and _plugin.details:
-        _plugin.print_test_name(nodeid)
-
-
-def pytest_runtest_logreport(report):
-    """Suppress default test output when details mode is enabled."""
-    if _plugin.enabled and _plugin.details and report.when == "call":
-        if report.passed:
-            return
-        elif report.failed:
-            return
-        elif report.skipped:
-            return
-
-
-def pytest_report_teststatus(report, config):
-    """Control the test status reporting to suppress dots and percentages in details mode."""
-    if _plugin.enabled and _plugin.details:
-        return "", "", ""
+        # Let's ensure we are dealing with a test report
+        if call.when == "call":
+            outcome = call.excinfo
+            try:
+                # Access the test outcome (passed, failed, etc.)
+                test_outcome = "failed" if outcome else "passed"
+                # Access the test duration
+                test_duration = call.duration
+                # Access the test ID (nodeid)
+                test_id = item.nodeid
+                # Print Test Outcome and Duration
+                print(f"Test: {test_id}")
+                print(f"Test Outcome: {test_outcome}")
+                print(f"Test Duration: {test_duration:.5f} seconds")
+            except Exception as e:
+                print("ERROR:", e)
