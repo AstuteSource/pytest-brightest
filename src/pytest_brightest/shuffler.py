@@ -4,7 +4,7 @@ import random
 from typing import Any, List, Optional
 
 
-class TestShuffler:
+class ShufflerOfTests:
     """Handles test shuffling with configurable random seeding."""
 
     def __init__(self, seed: Optional[int] = None):
@@ -35,9 +35,9 @@ class TestShuffler:
             self._random.shuffle(items)
 
 
-def create_shuffler(seed: Optional[int] = None) -> TestShuffler:
-    """Define a factory function to create a TestShuffler instance."""
-    return TestShuffler(seed)
+def create_shuffler(seed: Optional[int] = None) -> ShufflerOfTests:
+    """Define a factory function to create a TestItemShuffler instance."""
+    return ShufflerOfTests(seed)
 
 
 def generate_random_seed() -> int:
