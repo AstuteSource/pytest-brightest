@@ -62,14 +62,10 @@ class BrightestPlugin:
             elif self.shuffle_by == "file":
                 self.shuffler.shuffle_items_by_file_in_place(items)
 
-    def print_test_name(self, item) -> None:
+    def print_test_name(self, nodeid: str) -> None:
         """Print the fully-qualified test name if details mode is enabled."""
         if self.details:
-            test_file = getattr(
-                item, "fspath", str(getattr(item, "path", "unknown"))
-            )
-            test_name = getattr(item, "name", "unknown")
-            print(f"pytest-brightest: Running {test_file}::{test_name}")
+            print(f"{nodeid}\n")
 
 
 # Global plugin instance
@@ -134,7 +130,7 @@ def pytest_collection_modifyitems(config, items):
         _plugin.shuffle_tests(items)
 
 
-def pytest_runtest_setup(item):
-    """Print test name before running each test if details mode is enabled."""
-    if _plugin.enabled:
-        _plugin.print_test_name(item)
+def pytest_runtest_logstart(nodeid, location):
+    """Print test name when pytest starts logging for a test if details mode is enabled."""
+    if _plugin.enabled and _plugin.details:
+        _plugin.print_test_name(nodeid)
