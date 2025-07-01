@@ -29,6 +29,9 @@ dependencies = [
     "typer>=0.16.0",
 ]
 
+[project.entry-points.pytest11]
+brightest = "pytest_brightest.plugin"
+
 [project.scripts]
 pytest-brightest = "pytest_brightest:main"
 
