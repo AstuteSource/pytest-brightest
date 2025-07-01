@@ -68,6 +68,21 @@ class BrightestPlugin:
             print(f"{nodeid}\n")
 
 
+class BrightestTerminalReporter:
+    """Custom terminal reporter that suppresses default output in details mode."""
+
+    def __init__(self, original_reporter):
+        """Initialize with reference to original reporter."""
+        self.original_reporter = original_reporter
+
+    def pytest_runtest_logreport(self, report):
+        """Handle test log reports, suppressing output in details mode."""
+        if _plugin.enabled and _plugin.details and report.when == "call":
+            return
+        if hasattr(self.original_reporter, "pytest_runtest_logreport"):
+            self.original_reporter.pytest_runtest_logreport(report)
+
+
 # Global plugin instance
 _plugin = BrightestPlugin()
 
@@ -122,12 +137,34 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     """Configure the plugin when pytest starts."""
     _plugin.configure(config)
+    if _plugin.enabled and _plugin.details:
+        terminal_reporter = config.pluginmanager.get_plugin("terminalreporter")
+        if terminal_reporter:
+            config.pluginmanager.register(
+                BrightestTerminalReporter(terminal_reporter),
+                "brightest_terminal_reporter"
+            )
 
 
 def pytest_collection_modifyitems(config, items):
     """Modify the collected test items."""
     if _plugin.enabled:
         _plugin.shuffle_tests(items)
+
+
+def pytest_runtest_logreport(report):
+    """Suppress default test output when details mode is enabled."""
+    if _plugin.enabled and _plugin.details and report.when == "call":
+        return
+
+
+def pytest_runtest_logstart(nodeid, location):
+    """Print test name when pytest starts logging for a test if details mode is enabled."""
+    if _plugin.enabled and _plugin.details:
+        _plugin.print_test_name(nodeid)
+    """Suppress default test output when details mode is enabled."""
+    if _plugin.enabled and _plugin.details and report.when == "call":
+        return
 
 
 def pytest_runtest_logstart(nodeid, location):
