@@ -15,8 +15,9 @@ class BrightestPlugin:
         self.shuffle_by = "suite"
         self.seed: Optional[int] = None
         self.shuffler: Optional[ShufflerOfTests] = None
+        self.details = False
 
-    def configure(self, config) -> None:
+    def configure(self, config) -> None:  # noqa: PLR0912
         """Configure the plugin based on command line options."""
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
@@ -39,6 +40,14 @@ class BrightestPlugin:
             self.seed = int(seed_option)
         elif self.shuffle_enabled:
             self.seed = generate_random_seed()
+        details_option = config.getoption("--details", False)
+        no_details_option = config.getoption("--no-details", False)
+        if no_details_option:
+            self.details = False
+        elif details_option:
+            self.details = True
+        else:
+            self.details = False
         if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
             if self.seed is not None:
@@ -52,6 +61,15 @@ class BrightestPlugin:
                 self.shuffler.shuffle_items_in_place(items)
             elif self.shuffle_by == "file":
                 self.shuffler.shuffle_items_by_file_in_place(items)
+
+    def print_test_name(self, item) -> None:
+        """Print the fully-qualified test name if details mode is enabled."""
+        if self.details:
+            test_file = getattr(
+                item, "fspath", str(getattr(item, "path", "unknown"))
+            )
+            test_name = getattr(item, "name", "unknown")
+            print(f"pytest-brightest: Running {test_file}::{test_name}")
 
 
 # Global plugin instance
@@ -91,6 +109,18 @@ def pytest_addoption(parser):
         default=None,
         help="Set the random seed for test shuffling",
     )
+    group.addoption(
+        "--details",
+        action="store_true",
+        default=False,
+        help="Enable details display mode to print test names",
+    )
+    group.addoption(
+        "--no-details",
+        action="store_true",
+        default=False,
+        help="Disable details mode (default behavior)",
+    )
 
 
 def pytest_configure(config):
@@ -102,3 +132,9 @@ def pytest_collection_modifyitems(config, items):
     """Modify the collected test items."""
     if _plugin.enabled:
         _plugin.shuffle_tests(items)
+
+
+def pytest_runtest_setup(item):
+    """Print test name before running each test if details mode is enabled."""
+    if _plugin.enabled:
+        _plugin.print_test_name(item)
