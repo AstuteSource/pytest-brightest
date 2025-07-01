@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 
+from .reorder import TestReorderer, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
 
 
@@ -16,6 +17,11 @@ class BrightestPlugin:
         self.seed: Optional[int] = None
         self.shuffler: Optional[ShufflerOfTests] = None
         self.details = False
+        self.reorder_enabled = False
+        self.reorder_by = "fast"
+        self.reorder = "first"
+        self.reorderer: Optional[TestReorderer] = None
+        self.json_report_path: Optional[str] = None
 
     def configure(self, config) -> None:  # noqa: PLR0912
         """Configure the plugin based on command line options."""
@@ -48,6 +54,27 @@ class BrightestPlugin:
             self.details = True
         else:
             self.details = False
+        reorder_by_option = config.getoption("--reorder-by", None)
+        if reorder_by_option in ["fast", "slow", "fail", "pass"]:
+            self.reorder_enabled = True
+            self.reorder_by = reorder_by_option
+        reorder_option = config.getoption("--reorder", "first")
+        if reorder_option in ["first", "last"]:
+            self.reorder = reorder_option
+        self.json_report_path = config.getoption(
+            "--json-report-file", ".pytest_cache/pytest-json-report.json"
+        )
+        if self.reorder_enabled:
+            setup_json_report_plugin(config)
+            self.reorderer = TestReorderer(self.json_report_path)
+            if not self.reorderer.has_test_data():
+                print(
+                    "pytest-brightest: No previous test data found for reordering"
+                )
+            else:
+                print(
+                    f"pytest-brightest: Reordering tests by {self.reorder_by} ({self.reorder})"
+                )
         if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
             if self.seed is not None:
@@ -63,6 +90,13 @@ class BrightestPlugin:
                 self.shuffler.shuffle_items_by_file_in_place(items)
             elif self.shuffle_by == "files":
                 self.shuffler.shuffle_files_and_tests_in_place(items)
+
+    def reorder_tests(self, items: List) -> None:
+        """Reorder test items if reordering is enabled."""
+        if self.reorder_enabled and self.reorderer and items:
+            self.reorderer.reorder_tests_in_place(
+                items, self.reorder_by, self.reorder
+            )
 
 
 # Global plugin instance
@@ -114,6 +148,24 @@ def pytest_addoption(parser):
         default=False,
         help="Disable details mode (default behavior)",
     )
+    group.addoption(
+        "--reorder-by",
+        choices=["fast", "slow", "fail", "pass"],
+        default=None,
+        help="Reorder tests by speed (fast/slow) or outcome (fail/pass)",
+    )
+    group.addoption(
+        "--reorder",
+        choices=["first", "last"],
+        default="first",
+        help="Place reordered tests first or last in the test suite",
+    )
+    group.addoption(
+        "--json-report-file",
+        type=str,
+        default=".pytest_cache/pytest-json-report.json",
+        help="Path to JSON report file for test reordering",
+    )
 
 
 def pytest_configure(config):
@@ -124,22 +176,21 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     """Modify the collected test items."""
     if _plugin.enabled:
-        _plugin.shuffle_tests(items)
+        if _plugin.reorder_enabled:
+            _plugin.reorder_tests(items)
+        if _plugin.shuffle_enabled:
+            _plugin.shuffle_tests(items)
+
 
 def pytest_runtest_makereport(item, call):
     """Print test outcome and duration when a test is executed."""
     if _plugin.enabled and _plugin.details:
-        # Let's ensure we are dealing with a test report
         if call.when == "call":
             outcome = call.excinfo
             try:
-                # Access the test outcome (passed, failed, etc.)
                 test_outcome = "failed" if outcome else "passed"
-                # Access the test duration
                 test_duration = call.duration
-                # Access the test ID (nodeid)
                 test_id = item.nodeid
-                # Print Test Outcome and Duration
                 print(f"Test: {test_id}")
                 print(f"Test Outcome: {test_outcome}")
                 print(f"Test Duration: {test_duration:.5f} seconds")
