@@ -265,9 +265,6 @@ dev = [
     { name = "taskipy", specifier = ">=1.14.1" },
     { name = "ty", specifier = ">=0.0.1a12" },
 ]
-mypy = []
-ruff = []
-ty = []
 
 [[package]]
 name = "pytest-cov"
