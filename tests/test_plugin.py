@@ -7,7 +7,7 @@ from pytest_brightest.plugin import (
     pytest_collection_modifyitems,
     pytest_configure,
 )
-from pytest_brightest.shuffler import TestShuffler
+from pytest_brightest.shuffler import ShufflerOfTests
 
 
 class MockConfig:
@@ -98,7 +98,7 @@ class TestBrightestPlugin:
         plugin = BrightestPlugin()
         plugin.enabled = True
         plugin.shuffle_enabled = True
-        plugin.shuffler = plugin.shuffler or TestShuffler(42)
+        plugin.shuffler = plugin.shuffler or ShufflerOfTests(42)
         original_items = sample_test_items.copy()
         plugin.shuffle_tests(sample_test_items)
         assert set(sample_test_items) == set(original_items)
@@ -109,8 +109,7 @@ class TestBrightestPlugin:
         plugin = BrightestPlugin()
         plugin.enabled = True
         plugin.shuffle_enabled = True
-
-        plugin.shuffler = TestShuffler(42)
+        plugin.shuffler = ShufflerOfTests(42)
         items = []
         plugin.shuffle_tests(items)
         assert items == []
