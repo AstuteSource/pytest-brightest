@@ -41,7 +41,9 @@ class ShufflerOfTests:
         file_groups: Dict[str, List[Any]] = {}
         file_order = []
         for item in items:
-            file_path = getattr(item, "fspath", str(getattr(item, "path", "unknown")))
+            file_path = getattr(
+                item, "fspath", str(getattr(item, "path", "unknown"))
+            )
             file_path_str = str(file_path)
             if file_path_str not in file_groups:
                 file_groups[file_path_str] = []
