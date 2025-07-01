@@ -55,6 +55,28 @@ class ShufflerOfTests:
             self._random.shuffle(file_items)
             items.extend(file_items)
 
+    def shuffle_files_and_tests_in_place(self, items: List[Any]) -> None:
+        """Shuffle both the order of files and tests within each file."""
+        if not items:
+            return
+        file_groups: Dict[str, List[Any]] = {}
+        file_order = []
+        for item in items:
+            file_path = getattr(
+                item, "fspath", str(getattr(item, "path", "unknown"))
+            )
+            file_path_str = str(file_path)
+            if file_path_str not in file_groups:
+                file_groups[file_path_str] = []
+                file_order.append(file_path_str)
+            file_groups[file_path_str].append(item)
+        self._random.shuffle(file_order)
+        items.clear()
+        for file_path in file_order:
+            file_items = file_groups[file_path]
+            self._random.shuffle(file_items)
+            items.extend(file_items)
+
 
 def create_shuffler(seed: Optional[int] = None) -> ShufflerOfTests:
     """Define a factory function to create a TestItemShuffler instance."""
