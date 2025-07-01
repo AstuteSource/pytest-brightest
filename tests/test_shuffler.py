@@ -1,35 +1,35 @@
 """Tests for the test shuffling functionality."""
 
 from pytest_brightest.shuffler import (
-    TestShuffler,
+    ShufflerOfTests,
     create_shuffler,
     generate_random_seed,
 )
 
 
-class TestTestShuffler:
-    """Test cases for the TestShuffler class."""
+class TestShufflerOfTests:
+    """Test cases for the TestItemShuffler class."""
 
     def test_init_with_no_seed(self):
-        """Test TestShuffler initialization without a seed."""
-        shuffler = TestShuffler()
+        """Test TestItemShuffler initialization without a seed."""
+        shuffler = ShufflerOfTests()
         assert shuffler.get_seed() is None
 
     def test_init_with_seed(self):
-        """Test TestShuffler initialization with a specific seed."""
+        """Test TestItemShuffler initialization with a specific seed."""
         seed = 42
-        shuffler = TestShuffler(seed)
+        shuffler = ShufflerOfTests(seed)
         assert shuffler.get_seed() == seed
 
     def test_shuffle_tests_empty_list(self):
         """Test shuffling an empty list returns empty list."""
-        shuffler = TestShuffler(42)
+        shuffler = ShufflerOfTests(42)
         result = shuffler.shuffle_tests([])
         assert result == []
 
     def test_shuffle_tests_single_item(self):
         """Test shuffling a single item returns the same item."""
-        shuffler = TestShuffler(42)
+        shuffler = ShufflerOfTests(42)
         items = ["test1"]
         result = shuffler.shuffle_tests(items)
         assert result == ["test1"]
@@ -38,8 +38,8 @@ class TestTestShuffler:
     def test_shuffle_tests_deterministic_with_seed(self):
         """Test that shuffling is deterministic when using the same seed."""
         items = ["test1", "test2", "test3", "test4"]
-        shuffler1 = TestShuffler(42)
-        shuffler2 = TestShuffler(42)
+        shuffler1 = ShufflerOfTests(42)
+        shuffler2 = ShufflerOfTests(42)
         result1 = shuffler1.shuffle_tests(items)
         result2 = shuffler2.shuffle_tests(items)
         assert result1 == result2
@@ -48,8 +48,8 @@ class TestTestShuffler:
     def test_shuffle_tests_different_with_different_seeds(self):
         """Test that different seeds produce different shuffling results."""
         items = ["test1", "test2", "test3", "test4", "test5"]
-        shuffler1 = TestShuffler(42)
-        shuffler2 = TestShuffler(123)
+        shuffler1 = ShufflerOfTests(42)
+        shuffler2 = ShufflerOfTests(123)
         result1 = shuffler1.shuffle_tests(items)
         result2 = shuffler2.shuffle_tests(items)
         assert result1 != result2
@@ -59,7 +59,7 @@ class TestTestShuffler:
     def test_set_seed_changes_behavior(self):
         """Test that setting a new seed changes shuffling behavior."""
         items = ["test1", "test2", "test3", "test4"]
-        shuffler = TestShuffler(42)
+        shuffler = ShufflerOfTests(42)
         result1 = shuffler.shuffle_tests(items)
         shuffler.set_seed(123)
         result2 = shuffler.shuffle_tests(items)
@@ -68,7 +68,7 @@ class TestTestShuffler:
 
     def test_shuffle_items_in_place_modifies_original(self, sample_test_items):
         """Test that in-place shuffling modifies the original list."""
-        shuffler = TestShuffler(42)
+        shuffler = ShufflerOfTests(42)
         original_items = sample_test_items.copy()
         shuffler.shuffle_items_in_place(sample_test_items)
         assert set(sample_test_items) == set(original_items)
@@ -76,7 +76,7 @@ class TestTestShuffler:
 
     def test_shuffle_items_in_place_empty_list(self):
         """Test in-place shuffling of empty list does nothing."""
-        shuffler = TestShuffler(42)
+        shuffler = ShufflerOfTests(42)
         items = []
         shuffler.shuffle_items_in_place(items)
         assert items == []
@@ -88,14 +88,14 @@ class TestCreateShuffler:
     def test_create_shuffler_no_seed(self):
         """Test creating a shuffler without a seed."""
         shuffler = create_shuffler()
-        assert isinstance(shuffler, TestShuffler)
+        assert isinstance(shuffler, ShufflerOfTests)
         assert shuffler.get_seed() is None
 
     def test_create_shuffler_with_seed(self):
         """Test creating a shuffler with a specific seed."""
         seed = 42
         shuffler = create_shuffler(seed)
-        assert isinstance(shuffler, TestShuffler)
+        assert isinstance(shuffler, ShufflerOfTests)
         assert shuffler.get_seed() == seed
 
 
