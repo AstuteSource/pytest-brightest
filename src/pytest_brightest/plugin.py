@@ -28,6 +28,7 @@ class BrightestPlugin:
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
+        setup_json_report_plugin(config)
         shuffle_option = config.getoption("--shuffle", None)
         no_shuffle_option = config.getoption("--no-shuffle", False)
         if no_shuffle_option:
@@ -65,7 +66,6 @@ class BrightestPlugin:
             "--json-report-file", ".pytest_cache/pytest-json-report.json"
         )
         if self.reorder_enabled:
-            setup_json_report_plugin(config)
             self.reorderer = TestReorderer(self.json_report_path)
             if not self.reorderer.has_test_data():
                 print(
