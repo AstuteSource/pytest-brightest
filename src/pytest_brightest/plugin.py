@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 # import pytest
-from .shuffler import TestShuffler, generate_random_seed
+from .shuffler import ShufflerOfTests, generate_random_seed
 
 
 class BrightestPlugin:
@@ -14,7 +14,7 @@ class BrightestPlugin:
         self.enabled = False
         self.shuffle_enabled = False
         self.seed: Optional[int] = None
-        self.shuffler: Optional[TestShuffler] = None
+        self.shuffler: Optional[ShufflerOfTests] = None
 
     def configure(self, config) -> None:
         """Configure the plugin based on command line options."""
@@ -35,7 +35,7 @@ class BrightestPlugin:
         elif self.shuffle_enabled:
             self.seed = generate_random_seed()
         if self.shuffle_enabled:
-            self.shuffler = TestShuffler(self.seed)
+            self.shuffler = ShufflerOfTests(self.seed)
             if self.seed is not None:
                 print(f"pytest-brightest: Using random seed {self.seed}")
 
