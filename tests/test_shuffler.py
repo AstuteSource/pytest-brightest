@@ -8,15 +8,15 @@ from pytest_brightest.shuffler import (
 
 
 class TestShufflerOfTests:
-    """Test cases for the TestItemShuffler class."""
+    """Test cases for the ShufflerOfTests class."""
 
     def test_init_with_no_seed(self):
-        """Test TestItemShuffler initialization without a seed."""
+        """Test ShufflerOfTests initialization without a seed."""
         shuffler = ShufflerOfTests()
         assert shuffler.get_seed() is None
 
     def test_init_with_seed(self):
-        """Test TestItemShuffler initialization with a specific seed."""
+        """Test ShufflerOfTests initialization with a specific seed."""
         seed = 42
         shuffler = ShufflerOfTests(seed)
         assert shuffler.get_seed() == seed
@@ -80,6 +80,63 @@ class TestShufflerOfTests:
         items = []
         shuffler.shuffle_items_in_place(items)
         assert items == []
+
+    def test_shuffle_items_by_file_in_place_empty_list(self):
+        """Test file-based shuffling of empty list does nothing."""
+        shuffler = ShufflerOfTests(42)
+        items = []
+        shuffler.shuffle_items_by_file_in_place(items)
+        assert items == []
+
+    def test_shuffle_items_by_file_in_place_single_file(self, sample_test_items):
+        """Test file-based shuffling with items from a single file."""
+        shuffler = ShufflerOfTests(42)
+        original_items = sample_test_items.copy()
+        shuffler.shuffle_items_by_file_in_place(sample_test_items)
+        assert set(sample_test_items) == set(original_items)
+        assert len(sample_test_items) == len(original_items)
+
+    def test_shuffle_items_by_file_in_place_multiple_files(self, multi_file_test_items):
+        """Test file-based shuffling with items from multiple files."""
+        shuffler = ShufflerOfTests(42)
+        original_items = multi_file_test_items.copy()
+        shuffler.shuffle_items_by_file_in_place(multi_file_test_items)
+        assert set(multi_file_test_items) == set(original_items)
+        assert len(multi_file_test_items) == len(original_items)
+        file_a_items = [item for item in multi_file_test_items if item.fspath == "test_file_a.py"]
+        file_b_items = [item for item in multi_file_test_items if item.fspath == "test_file_b.py"]
+        file_c_items = [item for item in multi_file_test_items if item.fspath == "test_file_c.py"]
+        assert len(file_a_items) == 3  # noqa: PLR2004
+        assert len(file_b_items) == 2  # noqa: PLR2004
+        assert len(file_c_items) == 4  # noqa: PLR2004
+
+    def test_shuffle_items_by_file_preserves_file_order(self, multi_file_test_items):
+        """Test that file-based shuffling preserves the order of files."""
+        shuffler = ShufflerOfTests(42)
+        original_file_order = []
+        current_file = None
+        for item in multi_file_test_items:
+            if item.fspath != current_file:
+                current_file = item.fspath
+                original_file_order.append(current_file)
+        shuffler.shuffle_items_by_file_in_place(multi_file_test_items)
+        shuffled_file_order = []
+        current_file = None
+        for item in multi_file_test_items:
+            if item.fspath != current_file:
+                current_file = item.fspath
+                shuffled_file_order.append(current_file)
+        assert shuffled_file_order == original_file_order
+
+    def test_shuffle_items_by_file_deterministic_with_seed(self, multi_file_test_items):
+        """Test that file-based shuffling is deterministic with the same seed."""
+        items1 = multi_file_test_items.copy()
+        items2 = multi_file_test_items.copy()
+        shuffler1 = ShufflerOfTests(42)
+        shuffler2 = ShufflerOfTests(42)
+        shuffler1.shuffle_items_by_file_in_place(items1)
+        shuffler2.shuffle_items_by_file_in_place(items2)
+        assert items1 == items2
 
 
 class TestCreateShuffler:
