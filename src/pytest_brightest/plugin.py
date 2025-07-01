@@ -2,7 +2,6 @@
 
 from typing import List, Optional
 
-# import pytest
 from .shuffler import ShufflerOfTests, generate_random_seed
 
 
