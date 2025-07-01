@@ -19,7 +19,6 @@ class TestReorderer:
     def load_test_data(self) -> None:
         """Load test performance data from the JSON report file."""
         report_path = Path(self.json_report_path)
-        print(report_path)
         if not report_path.exists():
             return
         try:
@@ -168,15 +167,23 @@ def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
 
 
 def setup_json_report_plugin(config) -> bool:
-    """Check if pytest-json-report plugin is available and configure it."""
+    """Set up pytest-json-report plugin to generate JSON reports."""
     try:
         import pytest_jsonreport
 
-        if not config.getoption("--json-report", None):
-            config.option.json_report = ".pytest_cache/pytest-json-report.json"
+        plugin_manager = config.pluginmanager
+        if not plugin_manager.has_plugin("pytest_jsonreport"):
+            plugin_manager.register(
+                pytest_jsonreport.plugin, "pytest_jsonreport"
+            )
+        json_report_file = getattr(config.option, "json_report_file", None)
+        if not json_report_file:
             config.option.json_report_file = (
                 ".pytest_cache/pytest-json-report.json"
             )
         return True
     except ImportError:
+        print(
+            "pytest-brightest: Warning - pytest-json-report not installed, reordering features disabled"
+        )
         return False
