@@ -1,0 +1,17 @@
+[project]
+name = "pytest-brightest"
+version = "0.1.0"
+description = "Bright ideas for improving your pytest experience"
+readme = "README.md"
+authors = [
+    { name = "Gregory M. Kapfhammer", email = "gkapfham@allegheny.edu" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+pytest-brightest = "pytest_brightest:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
