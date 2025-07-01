@@ -13,6 +13,7 @@ class BrightestPlugin:
         """Initialize the plugin with default settings."""
         self.enabled = False
         self.shuffle_enabled = False
+        self.shuffle_by = "suite"
         self.seed: Optional[int] = None
         self.shuffler: Optional[ShufflerOfTests] = None
 
@@ -29,6 +30,11 @@ class BrightestPlugin:
             self.shuffle_enabled = shuffle_option
         else:
             self.shuffle_enabled = False
+        shuffle_by_option = config.getoption("--shuffle-by", "suite")
+        if shuffle_by_option in ["suite", "file"]:
+            self.shuffle_by = shuffle_by_option
+        else:
+            self.shuffle_by = "suite"
         seed_option = config.getoption("--seed", None)
         if seed_option is not None:
             self.seed = int(seed_option)
@@ -38,11 +44,15 @@ class BrightestPlugin:
             self.shuffler = ShufflerOfTests(self.seed)
             if self.seed is not None:
                 print(f"pytest-brightest: Using random seed {self.seed}")
+                print(f"pytest-brightest: Shuffling by {self.shuffle_by}")
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
         if self.shuffle_enabled and self.shuffler and items:
-            self.shuffler.shuffle_items_in_place(items)
+            if self.shuffle_by == "suite":
+                self.shuffler.shuffle_items_in_place(items)
+            elif self.shuffle_by == "file":
+                self.shuffler.shuffle_items_by_file_in_place(items)
 
 
 # Global plugin instance
@@ -69,6 +79,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="Do not shuffle the order of tests",
+    )
+    group.addoption(
+        "--shuffle-by",
+        choices=["suite", "file"],
+        default="suite",
+        help="Shuffle tests by suite (all tests) or by file (within each test file)",
     )
     group.addoption(
         "--seed",
