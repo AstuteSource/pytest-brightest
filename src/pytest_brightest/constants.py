@@ -15,3 +15,11 @@ NODEID = "nodeid"
 SETUP = "setup"
 TEARDOWN = "teardown"
 TESTS = "tests"
+
+# define constants for test outcomes
+TOTAL_DURATION = "total_duration"
+OUTCOME = "outcome"
+UNKNOWN = "unknown"
+SETUP_DURATION = "setup_duration"
+CALL_DURATION = "call_duration"
+TEARDOWN_DURATION = "teardown_duration"
