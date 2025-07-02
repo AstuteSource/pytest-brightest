@@ -3,8 +3,13 @@
 from pathlib import Path
 from typing import List, Optional
 
+from rich.console import Console
+
 from .reorder import TestReorderer, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
+
+# create a default console
+console = Console()
 
 
 class BrightestPlugin:
@@ -35,7 +40,7 @@ class BrightestPlugin:
         # This ensures we generate performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
-            print(
+            console.print(
                 "pytest-brightest: JSON report setup failed, reordering features disabled"
             )
         shuffle_option = config.getoption("--shuffle", None)
@@ -74,24 +79,24 @@ class BrightestPlugin:
         self.brightest_json_file = config.getoption(
             "--brightest-json-file", ".pytest_cache/pytest-json-report.json"
         )
-        # Show where we expect to find test data for reordering
-        if json_setup_success:
-            print(
-                f"pytest-brightest: Will look for test data in {self.brightest_json_file}"
-            )
-        # Configure reordering if requested
+        # # diagnostic: show where we expect to find test data for reordering
+        # if json_setup_success:
+        #     console.print(
+        #         f":flashlight: pytest-brightest: Will look for test data in {self.brightest_json_file}"
+        #     )
+        # configure reordering if requested
         if self.reorder_enabled:
             if json_setup_success:
                 self.reorderer = TestReorderer(self.brightest_json_file)
                 if not self.reorderer.has_test_data():
-                    print(
-                        "pytest-brightest: No previous test data found for reordering"
+                    console.print(
+                        ":high_brightness: pytest-brightest: No previous test data found for reordering"
                     )
-                    print(
-                        f"pytest-brightest: Run tests once to generate {self.brightest_json_file}"
+                    console.print(
+                        f":high_brightness: pytest-brightest: Run tests once to generate {self.brightest_json_file}"
                     )
                 else:
-                    print(
+                    console.print(
                         f"pytest-brightest: Reordering tests by {self.reorder_by} ({self.reorder})"
                     )
             else:
@@ -212,7 +217,6 @@ def pytest_collection_modifyitems(config, items):
 def pytest_sessionfinish(session, exitstatus):
     """Check if JSON report was generated after test session completes."""
     if _plugin.enabled:
-
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
             print(f"pytest-brightest: JSON report generated at {json_file}")
