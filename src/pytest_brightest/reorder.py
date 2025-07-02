@@ -207,6 +207,13 @@ def setup_json_report_plugin(config) -> bool:
         cache_dir = Path(PYTEST_CACHE_DIR)
         cache_dir.mkdir(exist_ok=True)
         json_report_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+        # if a JSON report location was already specified by the user through
+        # a command-line argument for the pytest-json-report plugin, alert them
+        # to the fact that we are storing it internally to manage history better
+        if hasattr(config.option, "json_report_file"):
+            console.print(":flashlight: pytest-brightest: Ignoring specification of pytest-json-report file")
+        # set the JSON report file location for pytest-json-report plugin
+        # to be the default location that is used by the pytest-brightest plugin
         config.option.json_report_file = json_report_file
         console.print(
             f":flashlight: pytest-brightest: Using JSON report in {json_report_file}"
