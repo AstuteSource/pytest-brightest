@@ -166,6 +166,22 @@ def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
     return TestReorderer(json_report_path)
 
 
+# def setup_json_report_plugin(config) -> bool:
+#     """Set up pytest-json-report plugin to generate JSON reports."""
+#     try:
+#         import pytest_jsonreport
+#         plugin_manager = config.pluginmanager
+#         if not plugin_manager.has_plugin("pytest_jsonreport"):
+#             plugin_manager.register(pytest_jsonreport.plugin, "pytest_jsonreport")
+#         if not hasattr(config.option, "json_report_file") or not config.option.json_report_file:
+#             config.option.json_report_file = ".pytest_cache/pytest-json-report.json"
+#         return True
+#     except ImportError as e:
+#         print(f"pytest-brightest: Warning - pytest-json-report not available: {e}")
+#         print("pytest-brightest: Install with: pip install pytest-json-report>=1.5.0")
+#         return False
+
+
 def setup_json_report_plugin(config) -> bool:
     """Set up pytest-json-report plugin to generate JSON reports."""
     try:
@@ -176,14 +192,36 @@ def setup_json_report_plugin(config) -> bool:
             plugin_manager.register(
                 pytest_jsonreport.plugin, "pytest_jsonreport"
             )
-        json_report_file = getattr(config.option, "json_report_file", None)
-        if not json_report_file:
-            config.option.json_report_file = (
-                ".pytest_cache/pytest-json-report.json"
+            print("pytest-brightest: Registered pytest-json-report plugin")
+        else:
+            print(
+                "pytest-brightest: pytest-json-report plugin already registered"
             )
+        json_report_file = ".pytest_cache/pytest-json-report.json"
+        if (
+            not hasattr(config.option, "json_report_file")
+            or not config.option.json_report_file
+        ):
+            config.option.json_report_file = json_report_file
+            print(
+                f"pytest-brightest: Set JSON report file to {json_report_file}"
+            )
+        else:
+            print(
+                f"pytest-brightest: Using existing JSON report file: {config.option.json_report_file}"
+            )
+        if (
+            not hasattr(config.option, "json_report")
+            or not config.option.json_report
+        ):
+            config.option.json_report = True
+            print("pytest-brightest: Enabled JSON report generation")
         return True
-    except ImportError:
+    except ImportError as e:
         print(
-            "pytest-brightest: Warning - pytest-json-report not installed, reordering features disabled"
+            f"pytest-brightest: Warning - pytest-json-report not available: {e}"
+        )
+        print(
+            "pytest-brightest: Install with: pip install pytest-json-report>=1.5.0"
         )
         return False
