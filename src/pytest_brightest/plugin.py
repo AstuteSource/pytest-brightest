@@ -5,7 +5,11 @@ from typing import List, Optional
 
 from rich.console import Console
 
-from .reorder import TestReorderer, setup_json_report_plugin
+from .constants import DEFAULT_PYTEST_JSON_REPORT_PATH
+from .reorder import (
+    TestReorderer,
+    setup_json_report_plugin,
+)
 from .shuffler import ShufflerOfTests, generate_random_seed
 
 # create a default console
@@ -76,15 +80,13 @@ class BrightestPlugin:
         reorder_option = config.getoption("--reorder", "first")
         if reorder_option in ["first", "last"]:
             self.reorder = reorder_option
-        self.brightest_json_file = config.getoption(
-            "--brightest-json-file", ".pytest_cache/pytest-json-report.json"
-        )
+        self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
         if self.reorder_enabled:
             if json_setup_success:
                 self.reorderer = TestReorderer(self.brightest_json_file)
                 if not self.reorderer.has_test_data():
                     console.print(
-                        ":high_brightness: pytest-brightest: No previous test data found for reordering"
+                        ":high_brightness: pytest-brightest: No previous pytest-json-report available for reordering"
                     )
                     console.print(
                         f":high_brightness: pytest-brightest: Run tests once to generate {self.brightest_json_file}"
