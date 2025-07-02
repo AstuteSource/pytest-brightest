@@ -79,12 +79,6 @@ class BrightestPlugin:
         self.brightest_json_file = config.getoption(
             "--brightest-json-file", ".pytest_cache/pytest-json-report.json"
         )
-        # # diagnostic: show where we expect to find test data for reordering
-        # if json_setup_success:
-        #     console.print(
-        #         f":flashlight: pytest-brightest: Will look for test data in {self.brightest_json_file}"
-        #     )
-        # configure reordering if requested
         if self.reorder_enabled:
             if json_setup_success:
                 self.reorderer = TestReorderer(self.brightest_json_file)
