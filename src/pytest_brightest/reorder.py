@@ -236,47 +236,7 @@ def setup_json_report_plugin(config) -> bool:
     # some other problem occurred and the pytest-brightest plugin cannot use
     # the pytest-json-report plugin
     except Exception as e:
-        print(
+        console.print(
             f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
         )
         return False
-
-
-# def setup_json_report_plugin(config) -> bool:
-#     """Configure pytest-json-report plugin to generate JSON reports automatically."""
-#     # attempt to configure the pytest-json-report plugin if needed
-#     try:
-#         plugin_manager = config.pluginmanager
-#         if not plugin_manager.has_plugin("pytest_jsonreport"):
-#             json_plugin = JSONReport()
-#             plugin_manager.register(json_plugin, "pytest_jsonreport")
-#             print("pytest-brightest: Registered pytest-json-report plugin")
-#         else:
-#             print(
-#                 "pytest-brightest: pytest-json-report plugin already registered"
-#             )
-#         cache_dir = Path(".pytest_cache")
-#         cache_dir.mkdir(exist_ok=True)
-#         json_report_file = ".pytest_cache/pytest-json-report.json"
-#         if not hasattr(config.option, "json_report_file"):
-#             config.option.json_report_file = json_report_file
-#         else:
-#             config.option.json_report_file = json_report_file
-#         console.print(
-#             f":flashlight: pytest-brightest: Looking for JSON report in {json_report_file}"
-#         )
-#         return True
-#     # was not able to import pytest_jsonreport's plugin which means that it cannot
-#     # be extract to support certain types of prioritization enabled by pytest-brightest
-#     except ImportError as e:
-#         console.print(
-#             f":high_brightness: pytest-brightest: pytest-json-report not available: {e}"
-#         )
-#         return False
-#     # some other problem occurred and the pytest-brightest plugin cannot use
-#     # the pytest-json-report plugin
-#     except Exception as e:
-#         print(
-#             f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
-#         )
-#         return False
