@@ -181,6 +181,9 @@ def pytest_sessionfinish(session, exitstatus):
             console.print(
                 f":flashlight: pytest-brightest: pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
             )
+        # the is no JSON file from the pytest-json-report plugin and the
+        # person using the pytest-brightest plugin may want to know how
+        # to create it, so give an extra diagnostic message about this
         else:
             console.print(NEWLINE)
             console.print(
