@@ -23,89 +23,100 @@ class BrightestPlugin:
         """Initialize the plugin with default settings."""
         self.enabled = False
         self.shuffle_enabled = False
-        self.shuffle_by = "suite"
+        self.shuffle_by = None
         self.seed: Optional[int] = None
         self.shuffler: Optional[ShufflerOfTests] = None
         self.details = False
         self.reorder_enabled = False
-        self.reorder_by = "fast"
-        self.reorder = "first"
+        self.reorder_by = None
+        self.reorder = None
         self.reorderer: Optional[TestReorderer] = None
         self.brightest_json_file: Optional[str] = None
 
-    def configure(self, config) -> None:  # noqa: PLR0912
-        """Configure the plugin based on command line options."""
+    def configure(self, config) -> None:
+        """Configure the plugin based on command-line options."""
         # check if the plugin is enabled; if it is not
         # enabled then no further configuration steps are taken
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
-        # always set up JSON reporting when brightest is enabled
-        # This ensures we generate performance data for future reordering
+        # configure the name of the file that will contain the
+        # JSON file that contains the pytest-json-report data
+        self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+        # always set up JSON reporting when brightest is enabled;
+        # this ensures generation of performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
             console.print(
-                "pytest-brightest: JSON report setup failed, reordering features disabled"
+                ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
             )
-        shuffle_option = config.getoption("--shuffle", None)
-        no_shuffle_option = config.getoption("--no-shuffle", False)
-        if no_shuffle_option:
-            self.shuffle_enabled = False
-        elif shuffle_option is not None:
-            self.shuffle_enabled = shuffle_option
-        else:
-            self.shuffle_enabled = False
-        shuffle_by_option = config.getoption("--shuffle-by", "suite")
-        if shuffle_by_option in ["suite", "file", "files"]:
-            self.shuffle_by = shuffle_by_option
-        else:
-            self.shuffle_by = "suite"
-        seed_option = config.getoption("--seed", None)
-        if seed_option is not None:
-            self.seed = int(seed_option)
-        elif self.shuffle_enabled:
-            self.seed = generate_random_seed()
-        details_option = config.getoption("--details", False)
-        no_details_option = config.getoption("--no-details", False)
-        if no_details_option:
-            self.details = False
-        elif details_option:
-            self.details = True
-        else:
-            self.details = False
+        # extract the configuration option for reordering and configure shuffling
         reorder_by_option = config.getoption("--reorder-by", None)
-        if reorder_by_option in ["fast", "slow", "fail", "pass"]:
-            self.reorder_enabled = True
-            self.reorder_by = reorder_by_option
-        reorder_option = config.getoption("--reorder", "first")
-        if reorder_option in ["first", "last"]:
-            self.reorder = reorder_option
-        self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
-        if self.reorder_enabled:
-            if json_setup_success:
-                self.reorderer = TestReorderer(self.brightest_json_file)
-                if not self.reorderer.has_test_data():
-                    console.print(
-                        ":high_brightness: pytest-brightest: No previous pytest-json-report available for reordering"
-                    )
-                    console.print(
-                        f":high_brightness: pytest-brightest: Run tests once to generate {self.brightest_json_file}"
-                    )
-                else:
-                    console.print(
-                        f"pytest-brightest: Reordering tests by {self.reorder_by} ({self.reorder})"
-                    )
-            else:
-                print(
-                    "pytest-brightest: Cannot enable reordering without JSON report plugin"
-                )
-                self.reorder_enabled = False
-        # Configure shuffling if requested
+        # these are the options for --reorder-by:
+        # --reorder-by shuffle
+        # --reorder-by cost
+        # --reorder-by failure
+        # --> reordering should take place through the use of shuffling
+        if reorder_by_option == "shuffle":
+            self.shuffle_enabled = True
+            # since shuffling is enabled, determine whether or not to shuffle
+            # by suite, file, or files and set the seed for shuffling
+            shuffle_by_option = config.getoption("--shuffle-by", "suite")
+            self.shuffle_by = shuffle_by_option
+            # determine the seed for shuffling, which is either specified
+            # on the command-line or generated randomly
+            seed_option = config.getoption("--seed", "suite")
+            if seed_option is not None:
+                self.seed = int(seed_option)
+            elif self.shuffle_enabled:
+                self.seed = generate_random_seed()
+        # shuffling is disabled
+        else:
+            self.shuffle_enabled = False
+        # finish the configuration of shuffling if requested
+        # and display the configuration details for pytest-brightest
         if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
-            if self.seed is not None:
-                print(f"pytest-brightest: Using random seed {self.seed}")
-                print(f"pytest-brightest: Shuffling by {self.shuffle_by}")
+            console.print(
+                f":flashlight: pytest-brightest: Shuffling by {self.shuffle_by}"
+            )
+            console.print(
+                f":flashlight: pytest-brightest: Using random seed {self.seed}"
+            )
+
+        # if shuffle_by_option in ["suite", "file", "files"]:
+        #     self.shuffle_by = shuffle_by_option
+        # else:
+        #     self.shuffle_by = "suite"
+        # seed_option = config.getoption("--seed", None)
+        #     reorder_by_option = config.getoption("--reorder-by", None)
+        # if reorder_by_option in ["fast", "slow", "fail", "pass"]:
+        #     self.reorder_enabled = True
+        #     self.reorder_by = reorder_by_option
+        # reorder_option = config.getoption("--reorder", "first")
+        # if reorder_option in ["first", "last"]:
+        #     self.reorder = reorder_option
+        # self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+
+        # if self.reorder_enabled:
+        #     if json_setup_success:
+        #         self.reorderer = TestReorderer(self.brightest_json_file)
+        #         if not self.reorderer.has_test_data():
+        #             console.print(
+        #                 ":high_brightness: pytest-brightest: No previous pytest-json-report available for reordering"
+        #             )
+        #             console.print(
+        #                 f":high_brightness: pytest-brightest: Run tests once to generate {self.brightest_json_file}"
+        #             )
+        #         else:
+        #             console.print(
+        #                 f"pytest-brightest: Reordering tests by {self.reorder_by} ({self.reorder})"
+        #             )
+        #     else:
+        #         print(
+        #             "pytest-brightest: Cannot enable reordering without JSON report plugin"
+        #         )
+        #         self.reorder_enabled = False
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
@@ -136,26 +147,20 @@ def pytest_addoption(parser):
         "--brightest",
         action="store_true",
         default=False,
-        help="Enable pytest-brightest plugin",
+        help="Enable the pytest-brightest plugin",
     )
-    group.addoption(
-        "--shuffle",
-        action="store_true",
-        default=False,
-        help="Shuffle the order of tests",
-    )
-    group.addoption(
-        "--no-shuffle",
-        action="store_true",
-        default=False,
-        help="Do not shuffle the order of tests",
-    )
-    group.addoption(
-        "--shuffle-by",
-        choices=["suite", "file", "files"],
-        default="suite",
-        help="Shuffle tests by suite (all tests), file (within each test file), or files (file order and tests within files)",
-    )
+    # group.addoption(
+    #     "--shuffle",
+    #     action="store_true",
+    #     default=False,
+    #     help="Shuffle the order of tests",
+    # )
+    # group.addoption(
+    #     "--no-shuffle",
+    #     action="store_true",
+    #     default=False,
+    #     help="Do not shuffle the order of tests",
+    # )
     group.addoption(
         "--seed",
         type=int,
@@ -163,35 +168,29 @@ def pytest_addoption(parser):
         help="Set the random seed for test shuffling",
     )
     group.addoption(
-        "--details",
-        action="store_true",
-        default=False,
-        help="Enable details display mode to print test names",
-    )
-    group.addoption(
-        "--no-details",
-        action="store_true",
-        default=False,
-        help="Disable details mode (default behavior)",
-    )
-    group.addoption(
         "--reorder-by",
-        choices=["fast", "slow", "fail", "pass"],
-        default=None,
-        help="Reorder tests by speed (fast/slow) or outcome (fail/pass)",
+        choices=["shuffle", "cost", "failure"],
+        default="shuffle",
+        help="Reorder tests by shuffling, cost, or failures",
     )
     group.addoption(
-        "--reorder",
-        choices=["first", "last"],
-        default="first",
-        help="Place reordered tests first or last in the test suite",
+        "--reorder-direction",
+        choices=["ascending", "descending"],
+        default="ascending",
+        help="Reordered tests in ascending or descending order",
     )
     group.addoption(
-        "--brightest-json-file",
-        type=str,
-        default=".pytest_cache/pytest-json-report.json",
-        help="Path to JSON report file used for test reordering",
+        "--shuffle-by",
+        choices=["suite", "file", "files"],
+        default="ascending",
+        help="Shuffle tests by suite (all tests), file (tests in each file), or files (file order and tests within files)",
     )
+    # group.addoption(
+    #     "--brightest-json-file",
+    #     type=str,
+    #     default=".pytest_cache/pytest-json-report.json",
+    #     help="Path to JSON report file used for test reordering",
+    # )
 
 
 def pytest_configure(config):
