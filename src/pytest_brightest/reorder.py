@@ -185,47 +185,12 @@ class TestReorderer:
         """Check if test performance data is available."""
         return bool(self.test_data)
 
-    # def get_test_count_by_outcome(self) -> Dict[str, int]:
-    #     """Get count of tests by outcome from previous runs."""
-    #     outcome_counts: Dict[str, int] = {}
-    #     for test_info in self.test_data.values():
-    #         outcome = test_info.get("outcome", "unknown")
-    #         outcome_counts[outcome] = outcome_counts.get(outcome, 0) + 1
-    #     return outcome_counts
-
-    # def get_duration_statistics(self) -> Dict[str, float]:
-    #     """Get duration statistics from previous test runs."""
-    #     durations = [
-    #         test_info.get("total_duration", 0.0)
-    #         for test_info in self.test_data.values()
-    #     ]
-    #     valid_durations = [d for d in durations if d > 0]
-    #     if not valid_durations:
-    #         return {"min": 0.0, "max": 0.0, "median": 0.0, "mean": 0.0}
-    #     valid_durations.sort()
-    #     return {
-    #         "min": valid_durations[0],
-    #         "max": valid_durations[-1],
-    #         "median": valid_durations[len(valid_durations) // 2],
-    #         "mean": sum(valid_durations) / len(valid_durations),
-    #     }
-
-    # def get_test_details(self, item: Any) -> Dict[str, Any]:
-    #     """Get detailed test information including all duration components."""
-    #     node_id = getattr(item, "nodeid", "")
-    #     test_info = self.test_data.get(node_id, {})
-    #     return {
-    #         "node_id": node_id,
-    #         "total_duration": test_info.get("total_duration", 0.0),
-    #         "setup_duration": test_info.get("setup_duration", 0.0),
-    #         "call_duration": test_info.get("call_duration", 0.0),
-    #         "teardown_duration": test_info.get("teardown_duration", 0.0),
-    #         "outcome": test_info.get("outcome", "unknown"),
-    #     }
-
 
 def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
     """Create a TestReorderer instance."""
+    # create a TestReorderer instance that
+    # can be used to reorder based on
+    # data about the tests from prior run(s)
     return TestReorderer(json_report_path)
 
 
