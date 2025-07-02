@@ -7,9 +7,22 @@ from typing import Any, Dict, List, Optional, Tuple
 from rich.console import Console
 
 from .constants import (
+    CALL,
+    CALL_DURATION,
+    DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
+    DURATION,
+    NODEID,
+    OUTCOME,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
+    SETUP,
+    SETUP_DURATION,
+    TEARDOWN,
+    TEARDOWN_DURATION,
+    TESTS,
+    TOTAL_DURATION,
+    UNKNOWN,
 )
 
 # create a default console
@@ -21,44 +34,62 @@ class TestReorderer:
 
     def __init__(self, json_report_path: Optional[str] = None):
         """Initialize the reorderer with optional JSON report path."""
+        # the pytest-json-report is a JSON file that contains
+        # all of the details about the prior run of a pytest test suite
         self.json_report_path = (
             json_report_path or DEFAULT_PYTEST_JSON_REPORT_PATH
         )
+        # the test_data dictionary stores details about the test cases
+        # that enables them to be reordered; for instance, it stores
+        # information about the cumulative execution time of a test
         self.test_data: Dict[str, Dict[str, Any]] = {}
+        # extract the data from the pytest-json-report that was found
+        # and store it in the dictionary called test_data
         self.load_test_data()
 
     def load_test_data(self) -> None:
-        """Load test performance data from the JSON report file."""
+        """Load test execution data from the pytest-json-report report file."""
+        # create a pathlib Path object for the JSON report file
         report_path = Path(self.json_report_path)
+        # if the report does not exist in the default location then
+        # the data from it cannot be extracted and thus the loading
+        # function can return early without doing anything
         if not report_path.exists():
             return
+        # attempt to read the JSON file and parse it to extract the data
         try:
-            with report_path.open("r", encoding="utf-8") as file:
+            with report_path.open("r", encoding=DEFAULT_FILE_ENCODING) as file:
+                # load the JSON data from the file
                 data = json.load(file)
                 if "tests" in data:
-                    for test in data["tests"]:
-                        node_id = test.get("nodeid", "")
+                    for test in data[TESTS]:
+                        node_id = test.get(NODEID, "")
                         if node_id:
-                            setup_duration = test.get("setup", {}).get(
-                                "duration", 0.0
+                            setup_duration = test.get(SETUP, {}).get(
+                                DURATION, 0.0
                             )
-                            call_duration = test.get("call", {}).get(
-                                "duration", 0.0
+                            call_duration = test.get(CALL, {}).get(
+                                DURATION, 0.0
                             )
-                            teardown_duration = test.get("teardown", {}).get(
-                                "duration", 0.0
+                            teardown_duration = test.get(TEARDOWN, {}).get(
+                                DURATION, 0.0
                             )
+                            # calculate the total duration (i.e., the cumulative
+                            # execution time for the test case) that will include
+                            # the reported costs for these three test stages:
+                            # --> setup, call, and teardown
                             total_duration = (
                                 setup_duration
                                 + call_duration
                                 + teardown_duration
                             )
+                            # store the test data in the dictionary
                             self.test_data[node_id] = {
-                                "total_duration": total_duration,
-                                "outcome": test.get("outcome", "unknown"),
-                                "setup_duration": setup_duration,
-                                "call_duration": call_duration,
-                                "teardown_duration": teardown_duration,
+                                TOTAL_DURATION: total_duration,
+                                OUTCOME: test.get(OUTCOME, UNKNOWN),
+                                SETUP_DURATION: setup_duration,
+                                CALL_DURATION: call_duration,
+                                TEARDOWN_DURATION: teardown_duration,
                             }
         except (json.JSONDecodeError, KeyError, OSError):
             pass
