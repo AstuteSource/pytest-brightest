@@ -4,17 +4,23 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from pytest_jsonreport.plugin import JSONReport
+from rich.console import Console
+
+DEFAULT_PYTEST_JSON_REPORT_PATH = ".pytest_cache/pytest-json-report.json"
+PYTEST_JSON_REPORT_PLUGIN_NAME = "pytest_jsonreport"
+PYTEST_CACHE_DIR = ".pytest_cache"
+
+
+# create a default console
+console = Console()
 
 
 class TestReorderer:
-    """Handles test reordering based on previous test performance data."""
+    """Handle test reordering based on previous test performance data."""
 
     def __init__(self, json_report_path: Optional[str] = None):
         """Initialize the reorderer with optional JSON report path."""
-        self.json_report_path = (
-            json_report_path or ".pytest_cache/pytest-json-report.json"
-        )
+        self.json_report_path = json_report_path or DEFAULT_PYTEST_JSON_REPORT_PATH
         self.test_data: Dict[str, Dict[str, Any]] = {}
         self.load_test_data()
 
@@ -181,35 +187,82 @@ def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
 
 
 def setup_json_report_plugin(config) -> bool:
-    """Set up pytest-json-report plugin to generate JSON reports automatically."""
+    """Configure pytest-json-report plugin to generate JSON reports automatically."""
+    # attempt to configure the pytest-json-report plugin if needed
     try:
-
+        # determine whether or not the pytest-json-report plugin is available
+        # and display a suitable diagnostic message before running test suite
         plugin_manager = config.pluginmanager
-        if not plugin_manager.has_plugin("pytest_jsonreport"):
-            json_plugin = JSONReport()
-            plugin_manager.register(json_plugin, "pytest_jsonreport")
-            print("pytest-brightest: Registered pytest-json-report plugin")
-        else:
-            print(
-                "pytest-brightest: pytest-json-report plugin already registered"
+        if plugin_manager.has_plugin(PYTEST_JSON_REPORT_PLUGIN_NAME):
+            console.print(
+                ":flashlight: pytest-brightest: pytest-json-report plugin available"
             )
-        cache_dir = Path(".pytest_cache")
-        cache_dir.mkdir(exist_ok=True)
-        json_report_file = ".pytest_cache/pytest-json-report.json"
-        if not hasattr(config.option, "json_report_file"):
-            config.option.json_report_file = json_report_file
         else:
-            config.option.json_report_file = json_report_file
-        print(f"pytest-brightest: Set JSON report file to {json_report_file}")
+            console.print(
+                ":flashlight: pytest-brightest: pytest-json-report plugin not available"
+            )
+        # configure the directory where the pytest-json-report plugin will
+        # store its JSON report file used by pytest-brightest for certain
+        # tasks like test reordering according to cumulative execution time
+        cache_dir = Path(PYTEST_CACHE_DIR)
+        cache_dir.mkdir(exist_ok=True)
+        json_report_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+        config.option.json_report_file = json_report_file
+        console.print(
+            f":flashlight: pytest-brightest: Using JSON report in {json_report_file}"
+        )
         return True
+    # was not able to import pytest_jsonreport's plugin which means that it cannot
+    # be extract to support certain types of prioritization enabled by pytest-brightest
     except ImportError as e:
-        print(
-            f"pytest-brightest: Warning - pytest-json-report not available: {e}"
-        )
-        print(
-            "pytest-brightest: Install with: pip install pytest-json-report>=1.5.0"
+        console.print(
+            f":high_brightness: pytest-brightest: pytest-json-report not available: {e}"
         )
         return False
+    # some other problem occurred and the pytest-brightest plugin cannot use
+    # the pytest-json-report plugin
     except Exception as e:
-        print(f"pytest-brightest: Error setting up JSON report plugin: {e}")
+        print(
+            f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
+        )
         return False
+
+
+# def setup_json_report_plugin(config) -> bool:
+#     """Configure pytest-json-report plugin to generate JSON reports automatically."""
+#     # attempt to configure the pytest-json-report plugin if needed
+#     try:
+#         plugin_manager = config.pluginmanager
+#         if not plugin_manager.has_plugin("pytest_jsonreport"):
+#             json_plugin = JSONReport()
+#             plugin_manager.register(json_plugin, "pytest_jsonreport")
+#             print("pytest-brightest: Registered pytest-json-report plugin")
+#         else:
+#             print(
+#                 "pytest-brightest: pytest-json-report plugin already registered"
+#             )
+#         cache_dir = Path(".pytest_cache")
+#         cache_dir.mkdir(exist_ok=True)
+#         json_report_file = ".pytest_cache/pytest-json-report.json"
+#         if not hasattr(config.option, "json_report_file"):
+#             config.option.json_report_file = json_report_file
+#         else:
+#             config.option.json_report_file = json_report_file
+#         console.print(
+#             f":flashlight: pytest-brightest: Looking for JSON report in {json_report_file}"
+#         )
+#         return True
+#     # was not able to import pytest_jsonreport's plugin which means that it cannot
+#     # be extract to support certain types of prioritization enabled by pytest-brightest
+#     except ImportError as e:
+#         console.print(
+#             f":high_brightness: pytest-brightest: pytest-json-report not available: {e}"
+#         )
+#         return False
+#     # some other problem occurred and the pytest-brightest plugin cannot use
+#     # the pytest-json-report plugin
+#     except Exception as e:
+#         print(
+#             f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
+#         )
+#         return False
