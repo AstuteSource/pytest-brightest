@@ -1,5 +1,6 @@
 """Main plugin implementation for pytest-brightest."""
 
+from pathlib import Path
 from typing import List, Optional
 
 from .reorder import TestReorderer, setup_json_report_plugin
@@ -209,7 +210,6 @@ def pytest_collection_modifyitems(config, items):
 def pytest_sessionfinish(session, exitstatus):
     """Check if JSON report was generated after test session completes."""
     if _plugin.enabled:
-        from pathlib import Path
 
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
