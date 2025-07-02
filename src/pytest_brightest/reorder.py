@@ -203,11 +203,11 @@ def setup_json_report_plugin(config) -> bool:
         plugin_manager = config.pluginmanager
         if plugin_manager.has_plugin(PYTEST_JSON_REPORT_PLUGIN_NAME):
             console.print(
-                ":flashlight: pytest-brightest: pytest-json-report plugin available"
+                ":flashlight: pytest-brightest: Detected the pytest-json-report plugin"
             )
         else:
             console.print(
-                ":flashlight: pytest-brightest: pytest-json-report plugin not available"
+                ":flashlight: pytest-brightest: Did not detect pytest-json-report plugin"
             )
         # configure the directory where the pytest-json-report plugin will
         # store its JSON report file used by pytest-brightest for certain
@@ -229,7 +229,7 @@ def setup_json_report_plugin(config) -> bool:
         # to be the default location that is used by the pytest-brightest plugin
         config.option.json_report_file = json_report_file
         console.print(
-            f":flashlight: pytest-brightest: Using pytest-json-report with name like {json_report_file}"
+            f":flashlight: pytest-brightest: Using pytest-json-report with name {json_report_file}"
         )
         return True
     # was not able to import pytest_jsonreport's plugin which means that it cannot
