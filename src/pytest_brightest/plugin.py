@@ -160,7 +160,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Check if JSON file fro pytest-json-report exists after test session completes."""
+    """Check if JSON file from pytest-json-report exists after test session completes."""
     # indicate that these parameters are not used
     # in this definition of the pytest hook
     _ = session
@@ -182,6 +182,7 @@ def pytest_sessionfinish(session, exitstatus):
                 f":flashlight: pytest-brightest: pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
             )
         else:
+            console.print(NEWLINE)
             console.print(
                 ":high_brightness: pytest-brightest: There is no JSON file created by pytest-json-report"
             )
