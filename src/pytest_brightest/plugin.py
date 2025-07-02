@@ -26,10 +26,12 @@ class BrightestPlugin:
 
     def configure(self, config) -> None:  # noqa: PLR0912
         """Configure the plugin based on command line options."""
+        # check if the plugin is enabled; if it is not
+        # enabled then no further configuration steps are taken
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
-        # Always set up JSON reporting when brightest is enabled
+        # always set up JSON reporting when brightest is enabled
         # This ensures we generate performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
