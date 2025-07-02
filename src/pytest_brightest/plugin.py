@@ -58,6 +58,7 @@ class BrightestPlugin:
         # --reorder-by failure
         # --> reordering should take place through the use of shuffling
         if reorder_by_option == "shuffle":
+            # indicate that shuffling is enabled
             self.shuffle_enabled = True
             # since shuffling is enabled, determine whether or not to shuffle
             # by suite, file, or files and set the seed for shuffling
