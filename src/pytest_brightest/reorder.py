@@ -6,10 +6,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from rich.console import Console
 
-DEFAULT_PYTEST_JSON_REPORT_PATH = ".pytest_cache/pytest-json-report.json"
-PYTEST_JSON_REPORT_PLUGIN_NAME = "pytest_jsonreport"
-PYTEST_CACHE_DIR = ".pytest_cache"
-
+from .constants import (
+    DEFAULT_PYTEST_JSON_REPORT_PATH,
+    PYTEST_CACHE_DIR,
+    PYTEST_JSON_REPORT_PLUGIN_NAME,
+)
 
 # create a default console
 console = Console()
