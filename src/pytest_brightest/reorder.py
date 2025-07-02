@@ -20,7 +20,9 @@ class TestReorderer:
 
     def __init__(self, json_report_path: Optional[str] = None):
         """Initialize the reorderer with optional JSON report path."""
-        self.json_report_path = json_report_path or DEFAULT_PYTEST_JSON_REPORT_PATH
+        self.json_report_path = (
+            json_report_path or DEFAULT_PYTEST_JSON_REPORT_PATH
+        )
         self.test_data: Dict[str, Dict[str, Any]] = {}
         self.load_test_data()
 
@@ -210,13 +212,18 @@ def setup_json_report_plugin(config) -> bool:
         # if a JSON report location was already specified by the user through
         # a command-line argument for the pytest-json-report plugin, alert them
         # to the fact that we are storing it internally to manage history better
-        if hasattr(config.option, "json_report_file"):
-            console.print(":flashlight: pytest-brightest: Ignoring specification of pytest-json-report file")
+        if (
+            hasattr(config.option, "json_report_file")
+            and config.option.json_report_file == ".report.json"
+        ):
+            console.print(
+                f":flashlight: pytest-brightest: Not using pytest-json-report in {config.option.json_report_file}"
+            )
         # set the JSON report file location for pytest-json-report plugin
         # to be the default location that is used by the pytest-brightest plugin
         config.option.json_report_file = json_report_file
         console.print(
-            f":flashlight: pytest-brightest: Using JSON report in {json_report_file}"
+            f":flashlight: pytest-brightest: Using pytest-json-report with name like {json_report_file}"
         )
         return True
     # was not able to import pytest_jsonreport's plugin which means that it cannot
