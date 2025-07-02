@@ -28,6 +28,8 @@ class BrightestPlugin:
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
+        # Always set up JSON reporting when brightest is enabled
+        # This ensures we generate performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
             print(
@@ -69,10 +71,12 @@ class BrightestPlugin:
         self.brightest_json_file = config.getoption(
             "--brightest-json-file", ".pytest_cache/pytest-json-report.json"
         )
+        # Show where we expect to find test data for reordering
         if json_setup_success:
             print(
                 f"pytest-brightest: Will look for test data in {self.brightest_json_file}"
             )
+        # Configure reordering if requested
         if self.reorder_enabled:
             if json_setup_success:
                 self.reorderer = TestReorderer(self.brightest_json_file)
@@ -92,69 +96,12 @@ class BrightestPlugin:
                     "pytest-brightest: Cannot enable reordering without JSON report plugin"
                 )
                 self.reorder_enabled = False
+        # Configure shuffling if requested
         if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
             if self.seed is not None:
                 print(f"pytest-brightest: Using random seed {self.seed}")
                 print(f"pytest-brightest: Shuffling by {self.shuffle_by}")
-
-    # def configure(self, config) -> None:  # noqa: PLR0912
-    #     """Configure the plugin based on command line options."""
-    #     self.enabled = config.getoption("--brightest", False)
-    #     if not self.enabled:
-    #         return
-    #     setup_json_report_plugin(config)
-    #     shuffle_option = config.getoption("--shuffle", None)
-    #     no_shuffle_option = config.getoption("--no-shuffle", False)
-    #     if no_shuffle_option:
-    #         self.shuffle_enabled = False
-    #     elif shuffle_option is not None:
-    #         self.shuffle_enabled = shuffle_option
-    #     else:
-    #         self.shuffle_enabled = False
-    #     shuffle_by_option = config.getoption("--shuffle-by", "suite")
-    #     if shuffle_by_option in ["suite", "file", "files"]:
-    #         self.shuffle_by = shuffle_by_option
-    #     else:
-    #         self.shuffle_by = "suite"
-    #     seed_option = config.getoption("--seed", None)
-    #     if seed_option is not None:
-    #         self.seed = int(seed_option)
-    #     elif self.shuffle_enabled:
-    #         self.seed = generate_random_seed()
-    #     details_option = config.getoption("--details", False)
-    #     no_details_option = config.getoption("--no-details", False)
-    #     if no_details_option:
-    #         self.details = False
-    #     elif details_option:
-    #         self.details = True
-    #     else:
-    #         self.details = False
-    #     reorder_by_option = config.getoption("--reorder-by", None)
-    #     if reorder_by_option in ["fast", "slow", "fail", "pass"]:
-    #         self.reorder_enabled = True
-    #         self.reorder_by = reorder_by_option
-    #     reorder_option = config.getoption("--reorder", "first")
-    #     if reorder_option in ["first", "last"]:
-    #         self.reorder = reorder_option
-    #     self.brightest_json_file = config.getoption(
-    #         "--brightest-json-file", ".pytest_cache/pytest-json-report.json"
-    #     )
-    #     if self.reorder_enabled:
-    #         self.reorderer = TestReorderer(self.brightest_json_file)
-    #         if not self.reorderer.has_test_data():
-    #             print(
-    #                 "pytest-brightest: No previous test data found for reordering"
-    #             )
-    #         else:
-    #             print(
-    #                 f"pytest-brightest: Reordering tests by {self.reorder_by} ({self.reorder})"
-    #             )
-    #     if self.shuffle_enabled:
-    #         self.shuffler = ShufflerOfTests(self.seed)
-    #         if self.seed is not None:
-    #             print(f"pytest-brightest: Using random seed {self.seed}")
-    #             print(f"pytest-brightest: Shuffling by {self.shuffle_by}")
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
@@ -249,16 +196,18 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Modify the collected test items."""
+    """Modify the collected test items by applying reordering and shuffling."""
     if _plugin.enabled:
+        # Apply reordering first (based on previous test performance)
         if _plugin.reorder_enabled:
             _plugin.reorder_tests(items)
+        # Apply shuffling second (randomizes the reordered or original test order)
         if _plugin.shuffle_enabled:
             _plugin.shuffle_tests(items)
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Check if JSON report was generated after test session."""
+    """Check if JSON report was generated after test session completes."""
     if _plugin.enabled:
         from pathlib import Path
 
@@ -291,43 +240,3 @@ def pytest_runtest_makereport(item, call):
                 print(f"Test Duration: {test_duration:.5f} seconds")
             except Exception as e:
                 print("ERROR:", e)
-
-
-# def pytest_configure(config):
-#     """Configure the plugin when pytest starts."""
-#     _plugin.configure(config)
-#
-#
-# def pytest_collection_modifyitems(config, items):
-#     """Modify the collected test items."""
-#     if _plugin.enabled:
-#         if _plugin.reorder_enabled:
-#             _plugin.reorder_tests(items)
-#         if _plugin.shuffle_enabled:
-#             _plugin.shuffle_tests(items)
-#
-#
-# def pytest_runtest_makereport(item, call):
-#     """Print test outcome and duration when a test is executed."""
-#     if _plugin.enabled and _plugin.details:
-#         if call.when == "call":
-#             outcome = call.excinfo
-#             try:
-#                 test_outcome = "failed" if outcome else "passed"
-#                 test_duration = call.duration
-#                 test_id = item.nodeid
-#                 print(f"Test: {test_id}")
-#                 print(f"Test Outcome: {test_outcome}")
-#                 print(f"Test Duration: {test_duration:.5f} seconds")
-#             except Exception as e:
-#                 print("ERROR:", e)
-#             outcome = call.excinfo
-#             try:
-#                 test_outcome = "failed" if outcome else "passed"
-#                 test_duration = call.duration
-#                 test_id = item.nodeid
-#                 print(f"Test: {test_id}")
-#                 print(f"Test Outcome: {test_outcome}")
-#                 print(f"Test Duration: {test_duration:.5f} seconds")
-#             except Exception as e:
-#                 print("ERROR:", e)
