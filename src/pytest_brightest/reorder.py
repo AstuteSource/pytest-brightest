@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from pytest_jsonreport.plugin import JSONReport
+
 
 class TestReorderer:
     """Handles test reordering based on previous test performance data."""
@@ -181,7 +183,6 @@ def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
 def setup_json_report_plugin(config) -> bool:
     """Set up pytest-json-report plugin to generate JSON reports automatically."""
     try:
-        from pytest_jsonreport.plugin import JSONReport
 
         plugin_manager = config.pluginmanager
         if not plugin_manager.has_plugin("pytest_jsonreport"):
