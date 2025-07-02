@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from rich.console import Console
 
-from .constants import DEFAULT_PYTEST_JSON_REPORT_PATH
+from .constants import DEFAULT_PYTEST_JSON_REPORT_PATH, NEWLINE
 from .reorder import (
     TestReorderer,
     setup_json_report_plugin,
@@ -78,10 +78,10 @@ class BrightestPlugin:
         if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
             console.print(
-                f":flashlight: pytest-brightest: Shuffling by {self.shuffle_by}"
+                f":flashlight: pytest-brightest: Shuffling the test cases by {self.shuffle_by}"
             )
             console.print(
-                f":flashlight: pytest-brightest: Using random seed {self.seed}"
+                f":flashlight: pytest-brightest: Shuffling with the random seed {self.seed}"
             )
 
         # if shuffle_by_option in ["suite", "file", "files"]:
@@ -210,34 +210,47 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Check if JSON report was generated after test session completes."""
+    """Check if JSON file fro pytest-json-report exists after test session completes."""
+    # indicate that these parameters are not used
+    # in this definition of the pytest hook
+    _ = session
+    _ = exitstatus
+    # the plugin was enabled and this means that we can display a final
+    # message about the behavior of the pytest-brightest plugin
     if _plugin.enabled:
+        # there is no JSON file to check
+        if _plugin.brightest_json_file is None:
+            return None
+        # the JSON file exists and we can display a message about it
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
-            print(f"pytest-brightest: JSON report generated at {json_file}")
-            print(
-                f"pytest-brightest: File size: {json_file.stat().st_size} bytes"
+            console.print(NEWLINE)
+            console.print(
+                f":flashlight: pytest-brightest: pytest-json-report detected at {json_file}"
+            )
+            console.print(
+                f":flashlight: pytest-brightest: pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
             )
         else:
-            print(
-                f"pytest-brightest: WARNING - JSON report not found at {json_file}"
+            console.print(
+                ":high_brightness: pytest-brightest: There is no JSON file created by pytest-json-report"
             )
-            print(
-                "pytest-brightest: Check if pytest-json-report is properly configured"
+            console.print(
+                ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
 
 
-def pytest_runtest_makereport(item, call):
-    """Print test outcome and duration when a test is executed."""
-    if _plugin.enabled and _plugin.details:
-        if call.when == "call":
-            outcome = call.excinfo
-            try:
-                test_outcome = "failed" if outcome else "passed"
-                test_duration = call.duration
-                test_id = item.nodeid
-                print(f"Test: {test_id}")
-                print(f"Test Outcome: {test_outcome}")
-                print(f"Test Duration: {test_duration:.5f} seconds")
-            except Exception as e:
-                print("ERROR:", e)
+# def pytest_runtest_makereport(item, call):
+#     """Print test outcome and duration when a test is executed."""
+#     if _plugin.enabled and _plugin.details:
+#         if call.when == "call":
+#             outcome = call.excinfo
+#             try:
+#                 test_outcome = "failed" if outcome else "passed"
+#                 test_duration = call.duration
+#                 test_id = item.nodeid
+#                 print(f"Test: {test_id}")
+#                 print(f"Test Outcome: {test_outcome}")
+#                 print(f"Test Duration: {test_duration:.5f} seconds")
+#             except Exception as e:
+#                 print("ERROR:", e)
