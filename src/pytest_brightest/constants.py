@@ -23,3 +23,7 @@ UNKNOWN = "unknown"
 SETUP_DURATION = "setup_duration"
 CALL_DURATION = "call_duration"
 TEARDOWN_DURATION = "teardown_duration"
+
+# define the empty string and starting constants
+EMPTY_STRING = ""
+ZERO_COST = 0.0
