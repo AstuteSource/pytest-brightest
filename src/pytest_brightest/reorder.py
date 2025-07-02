@@ -10,9 +10,7 @@ class TestReorderer:
 
     def __init__(self, json_report_path: Optional[str] = None):
         """Initialize the reorderer with optional JSON report path."""
-        self.json_report_path = (
-            json_report_path or ".pytest_cache/pytest-json-report.json"
-        )
+        self.json_report_path = json_report_path or ".pytest_cache/pytest-json-report.json"
         self.test_data: Dict[str, Dict[str, Any]] = {}
         self.load_test_data()
 
@@ -31,9 +29,7 @@ class TestReorderer:
                             self.test_data[node_id] = {
                                 "duration": test.get("duration", 0.0),
                                 "outcome": test.get("outcome", "unknown"),
-                                "call_duration": test.get("call", {}).get(
-                                    "duration", 0.0
-                                ),
+                                "call_duration": test.get("call", {}).get("duration", 0.0),
                             }
         except (json.JSONDecodeError, KeyError, OSError):
             pass
@@ -50,9 +46,7 @@ class TestReorderer:
         test_info = self.test_data.get(node_id, {})
         return test_info.get("outcome", "unknown")
 
-    def classify_tests_by_speed(
-        self, items: List[Any]
-    ) -> Tuple[List[Any], List[Any]]:
+    def classify_tests_by_speed(self, items: List[Any]) -> Tuple[List[Any], List[Any]]:
         """Classify tests into fast and slow based on median duration."""
         if not items:
             return [], []
@@ -71,11 +65,11 @@ class TestReorderer:
                 fast_tests.append(item)
             else:
                 slow_tests.append(item)
+        print("These are the fast tests:\n", fast_tests)
+        print("These are the slow tests:\n", slow_tests)
         return fast_tests, slow_tests
 
-    def classify_tests_by_outcome(
-        self, items: List[Any]
-    ) -> Tuple[List[Any], List[Any]]:
+    def classify_tests_by_outcome(self, items: List[Any]) -> Tuple[List[Any], List[Any]]:
         """Classify tests into passing and failing based on previous outcomes."""
         passing_tests = []
         failing_tests = []
@@ -87,26 +81,18 @@ class TestReorderer:
                 passing_tests.append(item)
         return passing_tests, failing_tests
 
-    def sort_tests_by_duration(
-        self, items: List[Any], ascending: bool = True
-    ) -> List[Any]:
+    def sort_tests_by_duration(self, items: List[Any], ascending: bool = True) -> List[Any]:
         """Sort tests by duration in ascending or descending order."""
         return sorted(items, key=self.get_test_duration, reverse=not ascending)
 
-    def reorder_tests_in_place(
-        self, items: List[Any], reorder_by: str, reorder: str
-    ) -> None:
+    def reorder_tests_in_place(self, items: List[Any], reorder_by: str, reorder: str) -> None:
         """Reorder tests in place based on the specified criteria."""
         if not items or reorder_by not in ["fast", "slow", "fail", "pass"]:
             return
         if reorder_by in ["fast", "slow"]:
             fast_tests, slow_tests = self.classify_tests_by_speed(items)
-            fast_tests = self.sort_tests_by_duration(
-                fast_tests, ascending=True
-            )
-            slow_tests = self.sort_tests_by_duration(
-                slow_tests, ascending=False
-            )
+            fast_tests = self.sort_tests_by_duration(fast_tests, ascending=True)
+            slow_tests = self.sort_tests_by_duration(slow_tests, ascending=False)
             if reorder_by == "fast":
                 target_tests = fast_tests
                 other_tests = slow_tests
@@ -114,9 +100,7 @@ class TestReorderer:
                 target_tests = slow_tests
                 other_tests = fast_tests
         else:
-            passing_tests, failing_tests = self.classify_tests_by_outcome(
-                items
-            )
+            passing_tests, failing_tests = self.classify_tests_by_outcome(items)
             if reorder_by == "fail":
                 target_tests = failing_tests
                 other_tests = passing_tests
@@ -166,62 +150,38 @@ def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
     return TestReorderer(json_report_path)
 
 
-# def setup_json_report_plugin(config) -> bool:
-#     """Set up pytest-json-report plugin to generate JSON reports."""
-#     try:
-#         import pytest_jsonreport
-#         plugin_manager = config.pluginmanager
-#         if not plugin_manager.has_plugin("pytest_jsonreport"):
-#             plugin_manager.register(pytest_jsonreport.plugin, "pytest_jsonreport")
-#         if not hasattr(config.option, "json_report_file") or not config.option.json_report_file:
-#             config.option.json_report_file = ".pytest_cache/pytest-json-report.json"
-#         return True
-#     except ImportError as e:
-#         print(f"pytest-brightest: Warning - pytest-json-report not available: {e}")
-#         print("pytest-brightest: Install with: pip install pytest-json-report>=1.5.0")
-#         return False
-
-
 def setup_json_report_plugin(config) -> bool:
-    """Set up pytest-json-report plugin to generate JSON reports."""
+    """Set up pytest-json-report plugin to generate JSON reports automatically."""
     try:
-        import pytest_jsonreport
-
+        # Import the correct JSONReport class from pytest-json-report
+        from pytest_jsonreport.plugin import JSONReport
         plugin_manager = config.pluginmanager
+        # Check if the plugin is already registered by name
         if not plugin_manager.has_plugin("pytest_jsonreport"):
-            plugin_manager.register(
-                pytest_jsonreport.plugin, "pytest_jsonreport"
-            )
+            # Create and register a new JSONReport plugin instance
+            json_plugin = JSONReport()
+            plugin_manager.register(json_plugin, "pytest_jsonreport")
             print("pytest-brightest: Registered pytest-json-report plugin")
         else:
-            print(
-                "pytest-brightest: pytest-json-report plugin already registered"
-            )
+            print("pytest-brightest: pytest-json-report plugin already registered")
+        # Ensure the cache directory exists
+        cache_dir = Path(".pytest_cache")
+        cache_dir.mkdir(exist_ok=True)
+        # Set the JSON report file path to our desired location
         json_report_file = ".pytest_cache/pytest-json-report.json"
-        if (
-            not hasattr(config.option, "json_report_file")
-            or not config.option.json_report_file
-        ):
+        # Force enable JSON reporting by setting the option
+        if not hasattr(config.option, "json_report_file"):
             config.option.json_report_file = json_report_file
-            print(
-                f"pytest-brightest: Set JSON report file to {json_report_file}"
-            )
         else:
-            print(
-                f"pytest-brightest: Using existing JSON report file: {config.option.json_report_file}"
-            )
-        if (
-            not hasattr(config.option, "json_report")
-            or not config.option.json_report
-        ):
-            config.option.json_report = True
-            print("pytest-brightest: Enabled JSON report generation")
+            # Override any existing setting to ensure we control the location
+            config.option.json_report_file = json_report_file
+        print(f"pytest-brightest: Set JSON report file to {json_report_file}")
         return True
     except ImportError as e:
-        print(
-            f"pytest-brightest: Warning - pytest-json-report not available: {e}"
-        )
-        print(
-            "pytest-brightest: Install with: pip install pytest-json-report>=1.5.0"
-        )
+        print(f"pytest-brightest: Warning - pytest-json-report not available: {e}")
+        print("pytest-brightest: Install with: pip install pytest-json-report>=1.5.0")
         return False
+    except Exception as e:
+        print(f"pytest-brightest: Error setting up JSON report plugin: {e}")
+        return False
+
