@@ -26,4 +26,5 @@ TEARDOWN_DURATION = "teardown_duration"
 
 # define the empty string and starting constants
 EMPTY_STRING = ""
+NEWLINE = "\n"
 ZERO_COST = 0.0
