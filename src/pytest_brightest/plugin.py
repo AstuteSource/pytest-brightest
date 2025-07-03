@@ -52,6 +52,18 @@ class BrightestPlugin:
             )
         # extract the configuration option for reordering and configure shuffling
         reorder_by_option = config.getoption("--reorder-by", None)
+        shuffle_by_option = config.getoption("--shuffle-by", None)
+        # check for invalid use of --shuffle-by without --reorder-by shuffle
+        if shuffle_by_option is not None and reorder_by_option != "shuffle":
+            console.print(
+                ":high_brightness: pytest-brightest: The --shuffle-by option is only valid when --reorder-by is set to 'shuffle'"
+            )
+            console.print(
+                ":high_brightness: pytest-brightest: Running tests in default order"
+            )
+            self.shuffle_enabled = False
+            self.reorder_enabled = False
+            return
         # these are the options for --reorder-by:
         # --reorder-by shuffle
         # --reorder-by cost
@@ -62,15 +74,29 @@ class BrightestPlugin:
             self.shuffle_enabled = True
             # since shuffling is enabled, determine whether or not to shuffle
             # by suite, file, or files and set the seed for shuffling
-            shuffle_by_option = config.getoption("--shuffle-by", "suite")
+            if shuffle_by_option is None:
+                shuffle_by_option = "suite"
             self.shuffle_by = shuffle_by_option
             # determine the seed for shuffling, which is either specified
             # on the command-line or generated randomly
-            seed_option = config.getoption("--seed", "suite")
+            seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
             elif self.shuffle_enabled:
                 self.seed = generate_random_seed()
+        # check for cost or failure reordering
+        elif reorder_by_option in ["cost", "failure"]:
+            # enable reordering for cost or failure options
+            self.reorder_enabled = True
+            self.reorder_by = reorder_by_option
+            # get the reorder direction option
+            reorder_direction_option = config.getoption(
+                "--reorder-direction", "ascending"
+            )
+            self.reorder = reorder_direction_option
+            # create the reorderer instance if JSON setup was successful
+            if json_setup_success and self.brightest_json_file:
+                self.reorderer = TestReorderer(self.brightest_json_file)
         # shuffling is disabled
         else:
             self.shuffle_enabled = False
@@ -97,7 +123,13 @@ class BrightestPlugin:
 
     def reorder_tests(self, items: List) -> None:
         """Reorder test items if reordering is enabled."""
-        if self.reorder_enabled and self.reorderer and items:
+        if (
+            self.reorder_enabled
+            and self.reorderer
+            and items
+            and self.reorder_by
+            and self.reorder
+        ):
             self.reorderer.reorder_tests_in_place(
                 items, self.reorder_by, self.reorder
             )
@@ -125,7 +157,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--reorder-by",
         choices=["shuffle", "cost", "failure"],
-        default="shuffle",
+        default=None,
         help="Reorder tests by shuffling, cost, or failures",
     )
     group.addoption(
@@ -137,7 +169,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--shuffle-by",
         choices=["suite", "file", "files"],
-        default="ascending",
+        default=None,
         help="Shuffle tests by suite (all tests), file (tests in each file), or files (file order and tests within files)",
     )
 
