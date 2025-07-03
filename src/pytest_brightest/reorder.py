@@ -141,45 +141,24 @@ class TestReorderer:
         self, items: List[Any], reorder_by: str, reorder: str
     ) -> None:
         """Reorder tests in place based on the specified criteria."""
-        if not items or reorder_by not in ["fast", "slow", "fail", "pass"]:
+        if not items:
             return
-        if reorder_by == "fast":
-            # Sort by total duration, fastest first
-            fast_tests = self.sort_tests_by_total_duration(
-                items, ascending=True
+        ascending = reorder == "ascending"
+        if reorder_by == "cost":
+            items.sort(key=self.get_test_total_duration, reverse=not ascending)
+        elif reorder_by == "name":
+            items.sort(
+                key=lambda item: getattr(item, NODEID, ""),
+                reverse=not ascending,
             )
-            items.clear()
-            if reorder == "first":
-                items.extend(fast_tests)
-            else:
-                items.extend(fast_tests)
-        elif reorder_by == "slow":
-            # Sort by total duration, slowest first
-            slow_tests = self.sort_tests_by_total_duration(
-                items, ascending=False
-            )
-            items.clear()
-            if reorder == "first":
-                items.extend(slow_tests)
-            else:
-                items.extend(slow_tests)
-        elif reorder_by in ["fail", "pass"]:
+        elif reorder_by == "failure":
             passing_tests, failing_tests = self.classify_tests_by_outcome(
                 items
             )
-            if reorder_by == "fail":
-                target_tests = failing_tests
-                other_tests = passing_tests
+            if ascending:
+                items[:] = passing_tests + failing_tests
             else:
-                target_tests = passing_tests
-                other_tests = failing_tests
-            items.clear()
-            if reorder == "first":
-                items.extend(target_tests)
-                items.extend(other_tests)
-            else:
-                items.extend(other_tests)
-                items.extend(target_tests)
+                items[:] = failing_tests + passing_tests
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""
