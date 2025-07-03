@@ -137,28 +137,62 @@ class TestReorderer:
             items, key=self.get_test_total_duration, reverse=not ascending
         )
 
+    def reorder_modules_by_cost(self, items: List[Any], ascending: bool = True) -> None:
+        """Reorder test modules by their cumulative cost."""
+        module_costs: Dict[str, float] = {}
+        module_items: Dict[str, List[Any]] = {}
+        for item in items:
+            nodeid = getattr(item, NODEID, "")
+            if nodeid:
+                module_path = nodeid.split("::")[0]
+                cost = self.get_test_total_duration(item)
+                module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        sorted_modules = sorted(
+            module_costs.keys(), key=lambda m: module_costs[m], reverse=not ascending
+        )
+        reordered_items = []
+        for module in sorted_modules:
+            console.print(
+                f":flashlight: pytest-brightest: Module {module} has cost {module_costs[module]}"
+            )
+            reordered_items.extend(module_items[module])
+        items[:] = reordered_items
+
     def reorder_tests_in_place(
-        self, items: List[Any], reorder_by: str, reorder: str
+        self, items: List[Any], reorder_by: str, reorder: str, focus: str
     ) -> None:
         """Reorder tests in place based on the specified criteria."""
         if not items:
             return
         ascending = reorder == "ascending"
-        if reorder_by == "cost":
-            items.sort(key=self.get_test_total_duration, reverse=not ascending)
-        elif reorder_by == "name":
-            items.sort(
-                key=lambda item: getattr(item, NODEID, ""),
-                reverse=not ascending,
-            )
-        elif reorder_by == "failure":
-            passing_tests, failing_tests = self.classify_tests_by_outcome(
-                items
-            )
-            if ascending:
-                items[:] = passing_tests + failing_tests
+        if focus == "modules-within-suite":
+            if reorder_by == "cost":
+                self.reorder_modules_by_cost(items, ascending)
             else:
-                items[:] = failing_tests + passing_tests
+                console.print(
+                    f":high_brightness: pytest-brightest: Reordering by {reorder_by} is not supported with focus 'modules-within-suite'"
+                )
+        elif focus == "tests-within-module":
+            # This is not yet implemented
+            console.print(
+                ":high_brightness: pytest-brightest: Reordering with focus 'tests-within-module' is not yet implemented"
+            )
+        elif focus == "tests-across-modules":
+            if reorder_by == "cost":
+                items.sort(key=self.get_test_total_duration, reverse=not ascending)
+            elif reorder_by == "name":
+                items.sort(
+                    key=lambda item: getattr(item, NODEID, ""), reverse=not ascending
+                )
+            elif reorder_by == "failure":
+                passing_tests, failing_tests = self.classify_tests_by_outcome(items)
+                if ascending:
+                    items[:] = passing_tests + failing_tests
+                else:
+                    items[:] = failing_tests + passing_tests
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""
