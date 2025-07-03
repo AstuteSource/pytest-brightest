@@ -17,20 +17,20 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
-    MODULES_WITHIN_SUITE,
     MODULE_COSTS,
     MODULE_ORDER,
     MODULE_TESTS,
+    MODULES_WITHIN_SUITE,
     NAME,
     NEWLINE,
     NODEID,
     SEED,
     SHUFFLE,
     TECHNIQUE,
-    TESTS_ACROSS_MODULES,
-    TESTS_WITHIN_MODULE,
     TEST_COSTS,
     TEST_ORDER,
+    TESTS_ACROSS_MODULES,
+    TESTS_WITHIN_MODULE,
     TIMESTAMP,
 )
 from .reorder import TestReorderer, setup_json_report_plugin
@@ -272,3 +272,4 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
             console.print(
                 ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
+
