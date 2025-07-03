@@ -180,9 +180,27 @@ want to refactor it in the following ways:
     - `shuffle`: Shuffle the tests in a random order.
     - `name`: Order the tests by their names.
     - `cost`: Order the tests by their execution time.
-- Make a command-line argument called `--reorder-by-strategy`, with these options:
+- Make a command-line argument called `--reorder-by-focus`, with these options:
     - `modules-within-suite`: Reorder the modules (i.e., the files) in the test
       suite, but do not actually change the order of the tests in the modules
     - `tests-within-module`: Reorder the tests within each module, but do not
       change the order of the modules in the test suite.
-    - `tests-across-modules`: Reorder the tests across all modules in the test suite.
+    - `tests-across-modules`: Reorder the tests across all modules in the test suite,
+       mixing and matching tests from different modules into a complete new
+       order
+- Make a command-line argument called `--reorder-in-direction` with these options:
+    - `ascending`: Order the tests in ascending order.
+    - `descending`: Order the tests in descending order.
+
+The idea is that the person using the pytest-brightest plugin should have the
+ability to pass these different command-line arguments to chose the technique by
+which the reordering will take place (i.e., the first new command-line argument), the
+focus of the reordering (i.e., the second new command-line argument), and the
+direction in which the reordering will take place (i.e., the third new
+command-line argument).
+
+The entire refactoring should not break the existing implementation. It should
+add these new command-line arguments and make the tool more general-purpose and
+easier to use and understand. If there are any inconsistencies in the
+description of the tool, then the agent implementing this refactoring should
+check in with the designer of the pytest-brightest plugin to clarify details.

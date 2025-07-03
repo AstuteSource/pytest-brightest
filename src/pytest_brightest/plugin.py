@@ -35,91 +35,49 @@ class BrightestPlugin:
 
     def configure(self, config) -> None:
         """Configure the plugin based on command-line options."""
-        # check if the plugin is enabled; if it is not
-        # enabled then no further configuration steps are taken
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
-        # configure the name of the file that will contain the
-        # JSON file that contains the pytest-json-report data
         self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
-        # always set up JSON reporting when brightest is enabled;
-        # this ensures generation of performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
             console.print(
                 ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
             )
-        # extract the configuration option for reordering and configure shuffling
-        reorder_by_option = config.getoption("--reorder-by", None)
-        shuffle_by_option = config.getoption("--shuffle-by", None)
-        # check for invalid use of --shuffle-by without --reorder-by shuffle
-        if shuffle_by_option is not None and reorder_by_option != "shuffle":
-            console.print(
-                ":high_brightness: pytest-brightest: The --shuffle-by option is only valid when --reorder-by is set to 'shuffle'"
-            )
-            console.print(
-                ":high_brightness: pytest-brightest: Running tests in default order"
-            )
-            self.shuffle_enabled = False
-            self.reorder_enabled = False
-            return
-        # these are the options for --reorder-by:
-        # --reorder-by shuffle
-        # --reorder-by cost
-        # --reorder-by failure
-        # --> reordering should take place through the use of shuffling
-        if reorder_by_option == "shuffle":
-            # indicate that shuffling is enabled
+        technique = config.getoption("--reorder-by-technique")
+        focus = config.getoption("--reorder-by-focus")
+        direction = config.getoption("--reorder-in-direction")
+        if technique == "shuffle":
             self.shuffle_enabled = True
-            # since shuffling is enabled, determine whether or not to shuffle
-            # by suite, file, or files and set the seed for shuffling
-            if shuffle_by_option is None:
-                shuffle_by_option = "suite"
-            self.shuffle_by = shuffle_by_option
-            # determine the seed for shuffling, which is either specified
-            # on the command-line or generated randomly
+            self.shuffle_by = focus
             seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
-            elif self.shuffle_enabled:
+            else:
                 self.seed = generate_random_seed()
-        # check for cost or failure reordering
-        elif reorder_by_option in ["cost", "failure"]:
-            # enable reordering for cost or failure options
-            self.reorder_enabled = True
-            self.reorder_by = reorder_by_option
-            # get the reorder direction option
-            reorder_direction_option = config.getoption(
-                "--reorder-direction", "ascending"
-            )
-            self.reorder = reorder_direction_option
-            # create the reorderer instance if JSON setup was successful
-            if json_setup_success and self.brightest_json_file:
-                self.reorderer = TestReorderer(self.brightest_json_file)
-        # shuffling is disabled
-        else:
-            self.shuffle_enabled = False
-        # finish the configuration of shuffling if requested
-        # and display the configuration details for pytest-brightest
-        if self.shuffle_enabled:
             self.shuffler = ShufflerOfTests(self.seed)
             console.print(
-                f":flashlight: pytest-brightest: Shuffling the test cases by {self.shuffle_by}"
+                f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
+        elif technique in ["name", "cost"]:
+            self.reorder_enabled = True
+            self.reorder_by = technique
+            self.reorder = direction
+            if json_setup_success and self.brightest_json_file:
+                self.reorderer = TestReorderer(self.brightest_json_file)
             console.print(
-                f":flashlight: pytest-brightest: Shuffling with the random seed {self.seed}"
+                f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order"
             )
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
         if self.shuffle_enabled and self.shuffler and items:
-            if self.shuffle_by == "suite":
+            if self.shuffle_by == "tests-across-modules":
                 self.shuffler.shuffle_items_in_place(items)
-            elif self.shuffle_by == "file":
+            elif self.shuffle_by == "tests-within-module":
                 self.shuffler.shuffle_items_by_file_in_place(items)
-            elif self.shuffle_by == "files":
-                self.shuffler.shuffle_files_and_tests_in_place(items)
+            elif self.shuffle_by == "modules-within-suite":
+                self.shuffler.shuffle_files_in_place(items)
 
     def reorder_tests(self, items: List) -> None:
         """Reorder test items if reordering is enabled."""
@@ -155,22 +113,26 @@ def pytest_addoption(parser):
         help="Set the random seed for test shuffling",
     )
     group.addoption(
-        "--reorder-by",
-        choices=["shuffle", "cost", "failure"],
+        "--reorder-by-technique",
+        choices=["shuffle", "name", "cost"],
         default=None,
-        help="Reorder tests by shuffling, cost, or failures",
+        help="Reorder tests by shuffling, name, or cost",
     )
     group.addoption(
-        "--reorder-direction",
+        "--reorder-by-focus",
+        choices=[
+            "modules-within-suite",
+            "tests-within-module",
+            "tests-across-modules",
+        ],
+        default="tests-across-modules",
+        help="Reorder modules, tests within modules, or tests across modules",
+    )
+    group.addoption(
+        "--reorder-in-direction",
         choices=["ascending", "descending"],
         default="ascending",
         help="Reordered tests in ascending or descending order",
-    )
-    group.addoption(
-        "--shuffle-by",
-        choices=["suite", "file", "files"],
-        default=None,
-        help="Shuffle tests by suite (all tests), file (tests in each file), or files (file order and tests within files)",
     )
 
 

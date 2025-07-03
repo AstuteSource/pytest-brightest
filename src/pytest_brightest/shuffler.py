@@ -55,8 +55,8 @@ class ShufflerOfTests:
             self._random.shuffle(file_items)
             items.extend(file_items)
 
-    def shuffle_files_and_tests_in_place(self, items: List[Any]) -> None:
-        """Shuffle both the order of files and tests within each file."""
+    def shuffle_files_in_place(self, items: List[Any]) -> None:
+        """Shuffle the order of files while preserving test order within each file."""
         if not items:
             return
         file_groups: Dict[str, List[Any]] = {}
@@ -73,9 +73,7 @@ class ShufflerOfTests:
         self._random.shuffle(file_order)
         items.clear()
         for file_path in file_order:
-            file_items = file_groups[file_path]
-            self._random.shuffle(file_items)
-            items.extend(file_items)
+            items.extend(file_groups[file_path])
 
 
 def create_shuffler(seed: Optional[int] = None) -> ShufflerOfTests:
