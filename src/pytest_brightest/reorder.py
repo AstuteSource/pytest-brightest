@@ -160,6 +160,10 @@ class TestReorderer:
             reverse=not ascending,
         )
         reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared
+        if sorted_modules:
+            console.print()
         for module in sorted_modules:
             console.print(
                 f":flashlight: pytest-brightest: Module {module} has cost {module_costs[module]}"
@@ -247,13 +251,13 @@ def setup_json_report_plugin(config) -> bool:
             and config.option.json_report_file == ".report.json"
         ):
             console.print(
-                f":flashlight: pytest-brightest: Not using pytest-json-report in {config.option.json_report_file}"
+                f":flashlight: pytest-brightest: Not using the pytest-json-report in {config.option.json_report_file}"
             )
         # set the JSON report file location for pytest-json-report plugin
         # to be the default location that is used by the pytest-brightest plugin
         config.option.json_report_file = json_report_file
         console.print(
-            f":flashlight: pytest-brightest: Using pytest-json-report with name {json_report_file}"
+            f":flashlight: pytest-brightest: Using the pytest-json-report with name {json_report_file}"
         )
         return True
     # was not able to import pytest_jsonreport's plugin which means that it cannot
