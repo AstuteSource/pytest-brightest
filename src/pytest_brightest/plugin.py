@@ -216,6 +216,19 @@ def pytest_sessionfinish(session, exitstatus):
                     brightest_data[MODULE_COSTS] = module_costs
                     brightest_data[TEST_COSTS] = test_costs
                 elif (
+                    _plugin.technique
+                    and _plugin.focus == "tests-within-module"
+                ):
+                    module_tests: Dict[str, List[str]] = {}
+                    for item in session.items:
+                        nodeid = getattr(item, NODEID, "")
+                        if nodeid:
+                            module_path = nodeid.split("::")[0]
+                            if module_path not in module_tests:
+                                module_tests[module_path] = []
+                            module_tests[module_path].append(nodeid)
+                    brightest_data["module_tests"] = module_tests
+                elif (
                     _plugin.technique == "name"
                     and _plugin.focus == "modules-within-suite"
                 ):
