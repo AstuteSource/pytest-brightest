@@ -63,3 +63,8 @@ TESTS_ACROSS_MODULES = "tests-across-modules"
 # define constants for reordering direction
 ASCENDING = "ascending"
 DESCENDING = "descending"
+
+# define constants for reporting
+MODULE_ORDER = "module_order"
+TEST_ORDER = "test_order"
+MODULE_TESTS = "module_tests"

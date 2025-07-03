@@ -17,17 +17,20 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
-    MODULE_COSTS,
     MODULES_WITHIN_SUITE,
+    MODULE_COSTS,
+    MODULE_ORDER,
+    MODULE_TESTS,
     NAME,
     NEWLINE,
     NODEID,
     SEED,
     SHUFFLE,
     TECHNIQUE,
-    TEST_COSTS,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
+    TEST_COSTS,
+    TEST_ORDER,
     TIMESTAMP,
 )
 from .reorder import TestReorderer, setup_json_report_plugin
@@ -208,6 +211,7 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
                     DIRECTION: _plugin.direction,
                     SEED: _plugin.seed,
                 }
+                # save the data about the cost-based reordering
                 if _plugin.technique == COST and _plugin.reorderer:
                     module_costs: Dict[str, float] = {}
                     test_costs: Dict[str, float] = {}
@@ -224,30 +228,31 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
                             test_costs[nodeid] = cost
                     brightest_data[MODULE_COSTS] = module_costs
                     brightest_data[TEST_COSTS] = test_costs
-                elif (
-                    _plugin.technique and _plugin.focus == TESTS_WITHIN_MODULE
-                ):
-                    module_tests: Dict[str, List[str]] = {}
-                    for item in session.items:
-                        nodeid = getattr(item, NODEID, "")
-                        if nodeid:
-                            module_path = nodeid.split("::")[0]
-                            if module_path not in module_tests:
-                                module_tests[module_path] = []
-                            module_tests[module_path].append(nodeid)
-                    brightest_data["module_tests"] = module_tests
-                elif (
-                    _plugin.technique == NAME
-                    and _plugin.focus == MODULES_WITHIN_SUITE
-                ):
-                    module_order = []
-                    for item in session.items:
-                        nodeid = getattr(item, NODEID, "")
-                        if nodeid:
-                            module_path = nodeid.split("::")[0]
-                            if module_path not in module_order:
-                                module_order.append(module_path)
-                    brightest_data["module_order"] = module_order
+                # save the data about the name-based reordering
+                elif _plugin.technique == NAME:
+                    if _plugin.focus == MODULES_WITHIN_SUITE:
+                        module_order = []
+                        for item in session.items:
+                            nodeid = getattr(item, NODEID, "")
+                            if nodeid:
+                                module_path = nodeid.split("::")[0]
+                                if module_path not in module_order:
+                                    module_order.append(module_path)
+                        brightest_data[MODULE_ORDER] = module_order
+                    elif _plugin.focus == TESTS_ACROSS_MODULES:
+                        brightest_data[TEST_ORDER] = [
+                            getattr(item, NODEID, "") for item in session.items
+                        ]
+                    elif _plugin.focus == TESTS_WITHIN_MODULE:
+                        module_tests: Dict[str, List[str]] = {}
+                        for item in session.items:
+                            nodeid = getattr(item, NODEID, "")
+                            if nodeid:
+                                module_path = nodeid.split("::")[0]
+                                if module_path not in module_tests:
+                                    module_tests[module_path] = []
+                                module_tests[module_path].append(nodeid)
+                        brightest_data[MODULE_TESTS] = module_tests
                 data[BRIGHTEST] = brightest_data
                 f.seek(0)
                 json.dump(data, f, indent=4)
@@ -267,4 +272,3 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
             console.print(
                 ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
-
