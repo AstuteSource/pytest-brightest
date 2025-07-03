@@ -137,7 +137,9 @@ class TestReorderer:
             items, key=self.get_test_total_duration, reverse=not ascending
         )
 
-    def reorder_modules_by_cost(self, items: List[Any], ascending: bool = True) -> None:
+    def reorder_modules_by_cost(
+        self, items: List[Any], ascending: bool = True
+    ) -> None:
         """Reorder test modules by their cumulative cost."""
         module_costs: Dict[str, float] = {}
         module_items: Dict[str, List[Any]] = {}
@@ -146,12 +148,16 @@ class TestReorderer:
             if nodeid:
                 module_path = nodeid.split("::")[0]
                 cost = self.get_test_total_duration(item)
-                module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+                module_costs[module_path] = (
+                    module_costs.get(module_path, 0.0) + cost
+                )
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
         sorted_modules = sorted(
-            module_costs.keys(), key=lambda m: module_costs[m], reverse=not ascending
+            module_costs.keys(),
+            key=lambda m: module_costs[m],
+            reverse=not ascending,
         )
         reordered_items = []
         for module in sorted_modules:
@@ -182,13 +188,18 @@ class TestReorderer:
             )
         elif focus == "tests-across-modules":
             if reorder_by == "cost":
-                items.sort(key=self.get_test_total_duration, reverse=not ascending)
+                items.sort(
+                    key=self.get_test_total_duration, reverse=not ascending
+                )
             elif reorder_by == "name":
                 items.sort(
-                    key=lambda item: getattr(item, NODEID, ""), reverse=not ascending
+                    key=lambda item: getattr(item, NODEID, ""),
+                    reverse=not ascending,
                 )
             elif reorder_by == "failure":
-                passing_tests, failing_tests = self.classify_tests_by_outcome(items)
+                passing_tests, failing_tests = self.classify_tests_by_outcome(
+                    items
+                )
                 if ascending:
                     items[:] = passing_tests + failing_tests
                 else:
