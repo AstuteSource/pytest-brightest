@@ -8,10 +8,18 @@ from typing import Dict, List, Optional
 from rich.console import Console
 
 from .constants import (
+    BRIGHTEST,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
+    DIRECTION,
+    FOCUS,
+    MODULE_COSTS,
     NEWLINE,
     NODEID,
+    SEED,
+    TECHNIQUE,
+    TEST_COSTS,
+    TIMESTAMP,
 )
 from .reorder import TestReorderer, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
@@ -39,18 +47,26 @@ class BrightestPlugin:
 
     def configure(self, config) -> None:
         """Configure the plugin based on command-line options."""
+        # check if the plugin is enabled; if it is not
+        # enabled then no further configuration steps are taken
         self.enabled = config.getoption("--brightest", False)
         if not self.enabled:
             return
+        # configure the name of the file that will contain the
+        # JSON file that contains the pytest-json-report data
         self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+        # always set up JSON reporting when brightest is enabled;
+        # this ensures generation of performance data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
             console.print(
                 ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
             )
+        # extract the configuration options for reordering and shuffling
         self.technique = config.getoption("--reorder-by-technique")
         self.focus = config.getoption("--reorder-by-focus")
         self.direction = config.getoption("--reorder-in-direction")
+        # if the shuffling technique is chosen, then configure the shuffler
         if self.technique == "shuffle":
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
@@ -63,6 +79,7 @@ class BrightestPlugin:
             console.print(
                 f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
+        # if the reordering technique is chosen, then configure the reorderer
         elif self.technique in ["name", "cost"]:
             self.reorder_enabled = True
             self.reorder_by = self.technique
@@ -75,6 +92,8 @@ class BrightestPlugin:
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
+        # if shuffling is enabled and there are items to shuffle, then
+        # shuffle them according to the chosen focus
         if self.shuffle_enabled and self.shuffler and items:
             if self.shuffle_by == "tests-across-modules":
                 self.shuffler.shuffle_items_in_place(items)
@@ -85,6 +104,8 @@ class BrightestPlugin:
 
     def reorder_tests(self, items: List) -> None:
         """Reorder test items if reordering is enabled."""
+        # if reordering is enabled and there are items to reorder, then
+        # reorder them according to the chosen technique, focus, and direction
         if (
             self.reorder_enabled
             and self.reorderer
@@ -97,7 +118,7 @@ class BrightestPlugin:
             )
 
 
-# Global plugin instance
+# create a global plugin instance that can be used by the pytest hooks
 _plugin = BrightestPlugin()
 
 
@@ -142,6 +163,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """Configure the plugin when pytest starts."""
+    # configure the plugin using the command-line options
     _plugin.configure(config)
 
 
@@ -149,6 +171,7 @@ def pytest_collection_modifyitems(config, items):
     """Modify the collected test items by applying reordering and shuffling."""
     # indicate that config parameter is not used
     _ = config
+    # if the plugin is enabled, then apply the reordering and shuffling
     if _plugin.enabled:
         # apply reordering first (based on previous test performance)
         if _plugin.reorder_enabled:
@@ -160,17 +183,21 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_sessionfinish(session, exitstatus):
     """Check if JSON file from pytest-json-report exists after test session completes."""
+    # indicate that these parameters are not used
+    _ = exitstatus
+    # if the plugin is enabled and a JSON file is specified, then
+    # save the diagnostic data to the JSON file
     if _plugin.enabled and _plugin.brightest_json_file:
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
             with json_file.open("r+", encoding=DEFAULT_FILE_ENCODING) as f:
                 data = json.load(f)
                 brightest_data = {
-                    "timestamp": datetime.now().isoformat(),
-                    "technique": _plugin.technique,
-                    "focus": _plugin.focus,
-                    "direction": _plugin.direction,
-                    "seed": _plugin.seed,
+                    TIMESTAMP: datetime.now().isoformat(),
+                    TECHNIQUE: _plugin.technique,
+                    FOCUS: _plugin.focus,
+                    DIRECTION: _plugin.direction,
+                    SEED: _plugin.seed,
                 }
                 if _plugin.technique == "cost" and _plugin.reorderer:
                     module_costs: Dict[str, float] = {}
@@ -179,14 +206,16 @@ def pytest_sessionfinish(session, exitstatus):
                         nodeid = getattr(item, NODEID, "")
                         if nodeid:
                             module_path = nodeid.split("::")[0]
-                            cost = _plugin.reorderer.get_test_total_duration(item)
+                            cost = _plugin.reorderer.get_test_total_duration(
+                                item
+                            )
                             module_costs[module_path] = (
                                 module_costs.get(module_path, 0.0) + cost
                             )
                             test_costs[nodeid] = cost
-                    brightest_data["module_costs"] = module_costs
-                    brightest_data["test_costs"] = test_costs
-                data["brightest"] = brightest_data
+                    brightest_data[MODULE_COSTS] = module_costs
+                    brightest_data[TEST_COSTS] = test_costs
+                data[BRIGHTEST] = brightest_data
                 f.seek(0)
                 json.dump(data, f, indent=4)
                 f.truncate()
