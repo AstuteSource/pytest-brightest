@@ -6,11 +6,17 @@ import pytest
 class MockTestItem:
     """Mock test item for testing purposes."""
 
-    def __init__(self, name: str, file_path: str = "test_file.py"):
+    def __init__(
+        self,
+        name: str,
+        file_path: str = "test_file.py",
+        outcome: str = "passed",
+    ):
         """Initialize mock test item with a name and file path."""
         self.name = name
         self.fspath = file_path
         self.nodeid = name
+        self.outcome = outcome
 
     def __str__(self) -> str:
         """Return string representation of the test item."""
