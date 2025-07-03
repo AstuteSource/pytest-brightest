@@ -215,6 +215,18 @@ def pytest_sessionfinish(session, exitstatus):
                             test_costs[nodeid] = cost
                     brightest_data[MODULE_COSTS] = module_costs
                     brightest_data[TEST_COSTS] = test_costs
+                elif (
+                    _plugin.technique == "name"
+                    and _plugin.focus == "modules-within-suite"
+                ):
+                    module_order = []
+                    for item in session.items:
+                        nodeid = getattr(item, NODEID, "")
+                        if nodeid:
+                            module_path = nodeid.split("::")[0]
+                            if module_path not in module_order:
+                                module_order.append(module_path)
+                    brightest_data["module_order"] = module_order
                 data[BRIGHTEST] = brightest_data
                 f.seek(0)
                 json.dump(data, f, indent=4)

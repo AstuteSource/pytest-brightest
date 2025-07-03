@@ -13,10 +13,12 @@ from .constants import (
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DURATION,
     EMPTY_STRING,
+    JSON_REPORT_FILE,
     NODEID,
     OUTCOME,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
+    REPORT_JSON,
     SETUP,
     SETUP_DURATION,
     TEARDOWN,
@@ -71,7 +73,7 @@ class TestReorderer:
                     for test in data[TESTS]:
                         # extract the node ID for the test case
                         node_id = test.get(NODEID, EMPTY_STRING)
-                        #                       # if the node ID is not empty then it is okay to extract
+                        # if the node ID is not empty then it is okay to extract
                         # the setup, call, and teardown durations for the test case
                         if node_id:
                             setup_duration = test.get(SETUP, {}).get(
@@ -101,18 +103,26 @@ class TestReorderer:
                                 TEARDOWN_DURATION: teardown_duration,
                             }
         except (json.JSONDecodeError, KeyError, OSError):
+            # if there is an error reading the JSON file, then do not
+            # attempt to load any data from it and instead just return
             pass
 
     def get_test_total_duration(self, item: Any) -> float:
         """Get the total duration of a test item from previous run(s)."""
+        # a pytest item has a nodeid attribute that uniquely identifies it
         node_id = getattr(item, NODEID, EMPTY_STRING)
+        # retrieve the test information from the test_data dictionary
         test_info = self.test_data.get(node_id, {})
+        # return the total duration of the test, or zero if it is not available
         return test_info.get(TOTAL_DURATION, ZERO_COST)
 
     def get_test_outcome(self, item: Any) -> str:
         """Get the outcome of a test item from previous run(s)."""
+        # a pytest item has a nodeid attribute that uniquely identifies it
         node_id = getattr(item, NODEID, EMPTY_STRING)
+        # retrieve the test information from the test_data dictionary
         test_info = self.test_data.get(node_id, {})
+        # return the outcome of the test, or unknown if it is not available
         return test_info.get(OUTCOME, UNKNOWN)
 
     def classify_tests_by_outcome(
@@ -121,8 +131,10 @@ class TestReorderer:
         """Classify tests into passing and failing based on previous outcomes."""
         passing_tests = []
         failing_tests = []
+        # iterate over each item and classify it as passing or failing
         for item in items:
             outcome = self.get_test_outcome(item)
+            # the outcome is a string that can be "passed", "failed", or "error"
             if outcome in ["failed", "error"]:
                 failing_tests.append(item)
             else:
@@ -133,6 +145,7 @@ class TestReorderer:
         self, items: List[Any], ascending: bool = True
     ) -> List[Any]:
         """Sort tests by total duration in ascending or descending order."""
+        # use the sorted function to sort the items by their total duration
         return sorted(
             items, key=self.get_test_total_duration, reverse=not ascending
         )
@@ -143,9 +156,11 @@ class TestReorderer:
         """Reorder test modules by their cumulative cost."""
         module_costs: Dict[str, float] = {}
         module_items: Dict[str, List[Any]] = {}
+        # iterate over each item and calculate the cumulative cost of each module
         for item in items:
             nodeid = getattr(item, NODEID, "")
             if nodeid:
+                # the module path is the part of the nodeid before the "::"
                 module_path = nodeid.split("::")[0]
                 cost = self.get_test_total_duration(item)
                 module_costs[module_path] = (
@@ -154,6 +169,7 @@ class TestReorderer:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
+        # sort the modules by their cumulative cost
         sorted_modules = sorted(
             module_costs.keys(),
             key=lambda m: module_costs[m],
@@ -161,35 +177,74 @@ class TestReorderer:
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
-        # to separate the diagnostic output from what appeared
+        # to separate the diagnostic output from what appeared before
         if sorted_modules:
             console.print()
+        # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
                 f":flashlight: pytest-brightest: Module {module} has cost {module_costs[module]}"
             )
             reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
+        items[:] = reordered_items
+
+    def reorder_modules_by_name(
+        self, items: List[Any], ascending: bool = True
+    ) -> None:
+        """Reorder test modules by their name."""
+        module_items: Dict[str, List[Any]] = {}
+        # iterate over each item and group them by module
+        for item in items:
+            nodeid = getattr(item, NODEID, "")
+            if nodeid:
+                module_path = nodeid.split("::")[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        # sort the modules by their name
+        sorted_modules = sorted(
+            module_items.keys(), reverse=not ascending
+        )
+        reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared before
+        if sorted_modules:
+            console.print()
+        # iterate over the sorted modules and add their items to the reordered list
+        for module in sorted_modules:
+            console.print(
+                f":flashlight: pytest-brightest: Module {module} is in the reordered suite"
+            )
+            reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
         items[:] = reordered_items
 
     def reorder_tests_in_place(
         self, items: List[Any], reorder_by: str, reorder: str, focus: str
     ) -> None:
         """Reorder tests in place based on the specified criteria."""
+        # it is not possible to reorder an empty list of items
         if not items:
             return
+        # the reorder direction is either ascending or descending
         ascending = reorder == "ascending"
+        # reorder the modules within the suite by their cumulative cost
         if focus == "modules-within-suite":
             if reorder_by == "cost":
                 self.reorder_modules_by_cost(items, ascending)
+            elif reorder_by == "name":
+                self.reorder_modules_by_name(items, ascending)
             else:
                 console.print(
                     f":high_brightness: pytest-brightest: Reordering by {reorder_by} is not supported with focus 'modules-within-suite'"
                 )
+        # reordering tests within a module is not yet implemented
         elif focus == "tests-within-module":
-            # This is not yet implemented
             console.print(
                 ":high_brightness: pytest-brightest: Reordering with focus 'tests-within-module' is not yet implemented"
             )
+        # reorder the tests across all modules in the suite
         elif focus == "tests-across-modules":
             if reorder_by == "cost":
                 items.sort(
@@ -247,8 +302,8 @@ def setup_json_report_plugin(config) -> bool:
         # a command-line argument for the pytest-json-report plugin, alert them
         # to the fact that we are storing it internally to manage history better
         if (
-            hasattr(config.option, "json_report_file")
-            and config.option.json_report_file == ".report.json"
+            hasattr(config.option, JSON_REPORT_FILE)
+            and config.option.json_report_file == REPORT_JSON
         ):
             console.print(
                 f":flashlight: pytest-brightest: Not using the pytest-json-report in {config.option.json_report_file}"
