@@ -171,7 +171,7 @@ contiguous region of the file.
 
 ## Refactoring Instructions
 
-Even though the command-line interface for the pytest-brightest plugin is
+1) Even though the command-line interface for the pytest-brightest plugin is
 acceptable and there is evidence that it works when installed through an
 editable install with uv in a project that uses Pytest and Pytest plugins, I
 want to refactor it in the following ways:
@@ -192,15 +192,16 @@ want to refactor it in the following ways:
     - `ascending`: Order the tests in ascending order.
     - `descending`: Order the tests in descending order.
 
-The idea is that the person using the pytest-brightest plugin should have the
+2) The idea is that the person using the pytest-brightest plugin should have the
 ability to pass these different command-line arguments to chose the technique by
-which the reordering will take place (i.e., the first new command-line argument), the
-focus of the reordering (i.e., the second new command-line argument), and the
-direction in which the reordering will take place (i.e., the third new
-command-line argument).
+which the reordering will take place (i.e., the first new command-line
+argument), the focus of the reordering (i.e., the second new command-line
+argument), and the direction in which the reordering will take place (i.e., the
+third new command-line argument).
 
-The entire refactoring should not break the existing implementation. It should
-add these new command-line arguments and make the tool more general-purpose and
-easier to use and understand. If there are any inconsistencies in the
-description of the tool, then the agent implementing this refactoring should
-check in with the designer of the pytest-brightest plugin to clarify details.
+3) The entire refactoring should not break the existing implementation. It
+should add these new command-line arguments and make the tool more
+general-purpose and easier to use and understand. If there are any
+inconsistencies in the description of the tool, then the agent implementing this
+refactoring should check in with the designer of the pytest-brightest plugin to
+clarify details.
