@@ -4,30 +4,28 @@
 
 from pytest_brightest.plugin import BrightestPlugin
 
-from .utils import MockConfig, MockTestItem
-
 
 class TestBrightestPlugin:
     """Test the BrightestPlugin class."""
 
-    def test_configure_disabled(self):
+    def test_configure_disabled(self, mock_config):
         """Test that the plugin is disabled by default."""
         plugin = BrightestPlugin()
-        config = MockConfig()
+        config = mock_config()
         plugin.configure(config)
         assert not plugin.enabled
 
-    def test_configure_enabled(self):
+    def test_configure_enabled(self, mock_config):
         """Test that the plugin can be enabled."""
         plugin = BrightestPlugin()
-        config = MockConfig({"--brightest": True})
+        config = mock_config({"--brightest": True})
         plugin.configure(config)
         assert plugin.enabled
 
-    def test_configure_shuffle(self):
+    def test_configure_shuffle(self, mock_config):
         """Test that the plugin can be configured to shuffle."""
         plugin = BrightestPlugin()
-        config = MockConfig(
+        config = mock_config(
             {
                 "--brightest": True,
                 "--reorder-by-technique": "shuffle",
@@ -38,10 +36,10 @@ class TestBrightestPlugin:
         assert plugin.shuffle_enabled
         assert plugin.seed == 42
 
-    def test_configure_reorder(self):
+    def test_configure_reorder(self, mock_config):
         """Test that the plugin can be configured to reorder."""
         plugin = BrightestPlugin()
-        config = MockConfig(
+        config = mock_config(
             {
                 "--brightest": True,
                 "--reorder-by-technique": "cost",
@@ -53,10 +51,10 @@ class TestBrightestPlugin:
         assert plugin.reorder_by == "cost"
         assert plugin.reorder == "ascending"
 
-    def test_shuffle_tests(self):
+    def test_shuffle_tests(self, mock_config, mock_test_item):
         """Test that the plugin can shuffle tests."""
         plugin = BrightestPlugin()
-        config = MockConfig(
+        config = mock_config(
             {
                 "--brightest": True,
                 "--reorder-by-technique": "shuffle",
@@ -64,14 +62,14 @@ class TestBrightestPlugin:
             }
         )
         plugin.configure(config)
-        items = [MockTestItem("one"), MockTestItem("two"), MockTestItem("three")]
+        items = [mock_test_item("one"), mock_test_item("two"), mock_test_item("three")]
         plugin.shuffle_tests(items)
         assert [item.name for item in items] == ["two", "one", "three"]
 
-    def test_reorder_tests(self, tmp_path):
+    def test_reorder_tests(self, tmp_path, mock_config, mock_test_item):
         """Test that the plugin can reorder tests."""
         plugin = BrightestPlugin()
-        config = MockConfig(
+        config = mock_config(
             {
                 "--brightest": True,
                 "--reorder-by-technique": "cost",
@@ -79,7 +77,7 @@ class TestBrightestPlugin:
             }
         )
         plugin.configure(config)
-        items = [MockTestItem("slow"), MockTestItem("fast")]
+        items = [mock_test_item("slow"), mock_test_item("fast")]
         plugin.reorder_tests(items)
         # This test is not complete as it requires a json file
         assert [item.name for item in items] == ["slow", "fast"]

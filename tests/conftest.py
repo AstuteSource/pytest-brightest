@@ -10,6 +10,7 @@ class MockTestItem:
         """Initialize mock test item with a name and file path."""
         self.name = name
         self.fspath = file_path
+        self.nodeid = name
 
     def __str__(self) -> str:
         """Return string representation of the test item."""
@@ -28,6 +29,30 @@ class MockTestItem:
     def __hash__(self) -> int:
         """Make the object hashable based on name and file path."""
         return hash((self.name, self.fspath))
+
+
+class MockConfig:
+    """A mock config object."""
+
+    def __init__(self, options=None):
+        """Initialize the mock config."""
+        self.options = options or {}
+
+    def getoption(self, name, default=None):
+        """Get an option from the mock config."""
+        return self.options.get(name, default)
+
+
+@pytest.fixture
+def mock_test_item():
+    """Provide a MockTestItem instance as a fixture."""
+    return MockTestItem
+
+
+@pytest.fixture
+def mock_config():
+    """Provide a MockConfig instance as a fixture."""
+    return MockConfig
 
 
 @pytest.fixture
