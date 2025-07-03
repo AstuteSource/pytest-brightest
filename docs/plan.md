@@ -168,3 +168,21 @@ contiguous region of the file.
     code blocks until the entire file is updated with the new code.
     - The reason for asking the code to be generated in this fashion is that it ensures
     that the line numbers in the code blocks match the line numbers in the file.
+
+## Refactoring Instructions
+
+Even though the command-line interface for the pytest-brightest plugin is
+acceptable and there is evidence that it works when installed through an
+editable install with uv in a project that uses Pytest and Pytest plugins, I
+want to refactor it in the following ways:
+
+- Make a command-line argument called `--reorder-by-technique`, with these options:
+    - `shuffle`: Shuffle the tests in a random order.
+    - `name`: Order the tests by their names.
+    - `cost`: Order the tests by their execution time.
+- Make a command-line argument called `--reorder-by-strategy`, with these options:
+    - `modules-within-suite`: Reorder the modules (i.e., the files) in the test
+      suite, but do not actually change the order of the tests in the modules
+    - `tests-within-module`: Reorder the tests within each module, but do not
+      change the order of the modules in the test suite.
+    - `tests-across-modules`: Reorder the tests across all modules in the test suite.
