@@ -82,6 +82,8 @@ class BrightestPlugin:
         if self.technique == SHUFFLE:
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
+            if self.shuffle_by is None:
+                self.shuffle_by = TESTS_ACROSS_MODULES
             seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
