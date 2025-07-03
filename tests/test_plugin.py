@@ -102,7 +102,6 @@ class TestHooks:
         """Test that the command line options are added."""
         parser = mocker.MagicMock()
         parser.getgroup.return_value = mocker.MagicMock()
-
         pytest_addoption(parser)
         assert parser.getgroup.called
         assert parser.getgroup.return_value.addoption.call_count == 5
@@ -125,12 +124,9 @@ class TestHooks:
         mock_plugin.enabled = True
         mock_plugin.reorder_enabled = True
         mock_plugin.shuffle_enabled = True
-
-
         config = mock_config()
         items = [mock_test_item("one"), mock_test_item("two")]
         pytest_collection_modifyitems(config, items)
-
         mock_plugin.reorder_tests.assert_called_once_with(items)
         mock_plugin.shuffle_tests.assert_called_once_with(items)
 
@@ -142,15 +138,11 @@ class TestHooks:
         )
         mock_plugin.enabled = True
         mock_plugin.brightest_json_file = "non_existent.json"
-
         mocker.patch("pathlib.Path.exists", return_value=False)
         mock_console_print = mocker.patch(
             "pytest_brightest.plugin.console.print"
         )
-
-
         pytest_sessionfinish(mocker.MagicMock(), 0)
-
         assert mock_console_print.call_count == 3
         mock_console_print.assert_any_call(
             ":high_brightness: pytest-brightest: There is no JSON file created by pytest-json-report"
@@ -168,7 +160,6 @@ class TestHooks:
         mock_plugin.focus = "tests-across-modules"
         mock_plugin.direction = "ascending"
         mock_plugin.seed = 123
-
         mock_path_exists = mocker.patch(
             "pathlib.Path.exists", return_value=True
         )
@@ -177,19 +168,14 @@ class TestHooks:
         mock_console_print = mocker.patch(
             "pytest_brightest.plugin.console.print"
         )
-
         mock_file_handle = mocker.MagicMock()
         mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
         mocker.patch(
             "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
         )
-
         mock_session = mocker.MagicMock()
         mock_session.items = []
-
-
         pytest_sessionfinish(mock_session, 0)
-
         mock_path_exists.assert_called_once_with()
         mock_json_load.assert_called_once_with(
             mock_file_handle.__enter__.return_value
