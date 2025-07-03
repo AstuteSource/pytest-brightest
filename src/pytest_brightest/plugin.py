@@ -33,7 +33,7 @@ from .constants import (
     TESTS_WITHIN_MODULE,
     TIMESTAMP,
 )
-from .reorder import TestReorderer, setup_json_report_plugin
+from .reorder import ReordererOfTests, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
 
 # create a default console
@@ -54,7 +54,7 @@ class BrightestPlugin:
         self.reorder_enabled = False
         self.reorder_by = None
         self.reorder = None
-        self.reorderer: Optional[TestReorderer] = None
+        self.reorderer: Optional[ReordererOfTests] = None
         self.brightest_json_file: Optional[str] = None
 
     def configure(self, config) -> None:
@@ -99,7 +99,7 @@ class BrightestPlugin:
             self.reorder_by = self.technique
             self.reorder = self.direction
             if json_setup_success and self.brightest_json_file:
-                self.reorderer = TestReorderer(self.brightest_json_file)
+                self.reorderer = ReordererOfTests(self.brightest_json_file)
             console.print(
                 f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )

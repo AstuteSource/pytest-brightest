@@ -40,7 +40,7 @@ from .constants import (
 console = Console()
 
 
-class TestReorderer:
+class ReordererOfTests:
     """Handle test reordering based on previous test performance data."""
 
     def __init__(self, json_report_path: Optional[str] = None):
@@ -322,12 +322,12 @@ class TestReorderer:
         return bool(self.test_data)
 
 
-def create_reorderer(json_report_path: Optional[str] = None) -> TestReorderer:
+def create_reorderer(json_report_path: Optional[str] = None) -> ReordererOfTests:
     """Create a TestReorderer instance."""
     # create a TestReorderer instance that
     # can be used to reorder based on
     # data about the tests from prior run(s)
-    return TestReorderer(json_report_path)
+    return ReordererOfTests(json_report_path)
 
 
 def setup_json_report_plugin(config) -> bool:
