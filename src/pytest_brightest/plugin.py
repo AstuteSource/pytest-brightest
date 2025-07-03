@@ -1,15 +1,19 @@
 """Main plugin implementation for pytest-brightest."""
 
+import json
+from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
-from .constants import DEFAULT_PYTEST_JSON_REPORT_PATH, NEWLINE
-from .reorder import (
-    TestReorderer,
-    setup_json_report_plugin,
+from .constants import (
+    DEFAULT_FILE_ENCODING,
+    DEFAULT_PYTEST_JSON_REPORT_PATH,
+    NEWLINE,
+    NODEID,
 )
+from .reorder import TestReorderer, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
 
 # create a default console
@@ -44,12 +48,12 @@ class BrightestPlugin:
             console.print(
                 ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
             )
-        technique = config.getoption("--reorder-by-technique")
-        focus = config.getoption("--reorder-by-focus")
-        direction = config.getoption("--reorder-in-direction")
-        if technique == "shuffle":
+        self.technique = config.getoption("--reorder-by-technique")
+        self.focus = config.getoption("--reorder-by-focus")
+        self.direction = config.getoption("--reorder-in-direction")
+        if self.technique == "shuffle":
             self.shuffle_enabled = True
-            self.shuffle_by = focus
+            self.shuffle_by = self.focus
             seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
@@ -59,14 +63,14 @@ class BrightestPlugin:
             console.print(
                 f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
-        elif technique in ["name", "cost"]:
+        elif self.technique in ["name", "cost"]:
             self.reorder_enabled = True
-            self.reorder_by = technique
-            self.reorder = direction
+            self.reorder_by = self.technique
+            self.reorder = self.direction
             if json_setup_success and self.brightest_json_file:
                 self.reorderer = TestReorderer(self.brightest_json_file)
             console.print(
-                f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order"
+                f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )
 
     def shuffle_tests(self, items: List) -> None:
@@ -89,7 +93,7 @@ class BrightestPlugin:
             and self.reorder
         ):
             self.reorderer.reorder_tests_in_place(
-                items, self.reorder_by, self.reorder
+                items, self.reorder_by, self.reorder, self.focus
             )
 
 
@@ -156,19 +160,36 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_sessionfinish(session, exitstatus):
     """Check if JSON file from pytest-json-report exists after test session completes."""
-    # indicate that these parameters are not used
-    # in this definition of the pytest hook
-    _ = session
-    _ = exitstatus
-    # the plugin was enabled and this means that we can display a final
-    # message about the behavior of the pytest-brightest plugin
-    if _plugin.enabled:
-        # there is no JSON file to check
-        if _plugin.brightest_json_file is None:
-            return None
-        # the JSON file exists and we can display a message about it
+    if _plugin.enabled and _plugin.brightest_json_file:
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
+            with json_file.open("r+", encoding=DEFAULT_FILE_ENCODING) as f:
+                data = json.load(f)
+                brightest_data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "technique": _plugin.technique,
+                    "focus": _plugin.focus,
+                    "direction": _plugin.direction,
+                    "seed": _plugin.seed,
+                }
+                if _plugin.technique == "cost" and _plugin.reorderer:
+                    module_costs: Dict[str, float] = {}
+                    test_costs: Dict[str, float] = {}
+                    for item in session.items:
+                        nodeid = getattr(item, NODEID, "")
+                        if nodeid:
+                            module_path = nodeid.split("::")[0]
+                            cost = _plugin.reorderer.get_test_total_duration(item)
+                            module_costs[module_path] = (
+                                module_costs.get(module_path, 0.0) + cost
+                            )
+                            test_costs[nodeid] = cost
+                    brightest_data["module_costs"] = module_costs
+                    brightest_data["test_costs"] = test_costs
+                data["brightest"] = brightest_data
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
             console.print(NEWLINE)
             console.print(
                 f":flashlight: pytest-brightest: pytest-json-report detected at {json_file}"
@@ -176,9 +197,6 @@ def pytest_sessionfinish(session, exitstatus):
             console.print(
                 f":flashlight: pytest-brightest: pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
             )
-        # the is no JSON file from the pytest-json-report plugin and the
-        # person using the pytest-brightest plugin may want to know how
-        # to create it, so give an extra diagnostic message about this
         else:
             console.print(NEWLINE)
             console.print(
