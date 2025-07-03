@@ -8,16 +8,25 @@ from typing import Dict, List, Optional
 from rich.console import Console
 
 from .constants import (
+    ASCENDING,
     BRIGHTEST,
+    COST,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
+    DESCENDING,
     DIRECTION,
+    FAILURE,
     FOCUS,
+    MODULES_WITHIN_SUITE,
     MODULE_COSTS,
+    NAME,
     NEWLINE,
     NODEID,
     SEED,
+    SHUFFLE,
     TECHNIQUE,
+    TESTS_ACROSS_MODULES,
+    TESTS_WITHIN_MODULE,
     TEST_COSTS,
     TIMESTAMP,
 )
@@ -67,7 +76,7 @@ class BrightestPlugin:
         self.focus = config.getoption("--reorder-by-focus")
         self.direction = config.getoption("--reorder-in-direction")
         # if the shuffling technique is chosen, then configure the shuffler
-        if self.technique == "shuffle":
+        if self.technique == SHUFFLE:
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
             seed_option = config.getoption("--seed", None)
@@ -80,7 +89,7 @@ class BrightestPlugin:
                 f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
         # if the reordering technique is chosen, then configure the reorderer
-        elif self.technique in ["name", "cost"]:
+        elif self.technique in [NAME, COST, FAILURE]:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
@@ -95,11 +104,11 @@ class BrightestPlugin:
         # if shuffling is enabled and there are items to shuffle, then
         # shuffle them according to the chosen focus
         if self.shuffle_enabled and self.shuffler and items:
-            if self.shuffle_by == "tests-across-modules":
+            if self.shuffle_by == TESTS_ACROSS_MODULES:
                 self.shuffler.shuffle_items_in_place(items)
-            elif self.shuffle_by == "tests-within-module":
+            elif self.shuffle_by == TESTS_WITHIN_MODULE:
                 self.shuffler.shuffle_items_by_file_in_place(items)
-            elif self.shuffle_by == "modules-within-suite":
+            elif self.shuffle_by == MODULES_WITHIN_SUITE:
                 self.shuffler.shuffle_files_in_place(items)
 
     def reorder_tests(self, items: List) -> None:
@@ -139,24 +148,24 @@ def pytest_addoption(parser):
     )
     group.addoption(
         "--reorder-by-technique",
-        choices=["shuffle", "name", "cost"],
+        choices=[SHUFFLE, NAME, COST, FAILURE],
         default=None,
-        help="Reorder tests by shuffling, name, or cost",
+        help="Reorder tests by shuffling, name, cost, or failure",
     )
     group.addoption(
         "--reorder-by-focus",
         choices=[
-            "modules-within-suite",
-            "tests-within-module",
-            "tests-across-modules",
+            MODULES_WITHIN_SUITE,
+            TESTS_WITHIN_MODULE,
+            TESTS_ACROSS_MODULES,
         ],
-        default="tests-across-modules",
+        default=TESTS_ACROSS_MODULES,
         help="Reorder modules, tests within modules, or tests across modules",
     )
     group.addoption(
         "--reorder-in-direction",
-        choices=["ascending", "descending"],
-        default="ascending",
+        choices=[ASCENDING, DESCENDING],
+        default=ASCENDING,
         help="Reordered tests in ascending or descending order",
     )
 
@@ -199,7 +208,7 @@ def pytest_sessionfinish(session, exitstatus):
                     DIRECTION: _plugin.direction,
                     SEED: _plugin.seed,
                 }
-                if _plugin.technique == "cost" and _plugin.reorderer:
+                if _plugin.technique == COST and _plugin.reorderer:
                     module_costs: Dict[str, float] = {}
                     test_costs: Dict[str, float] = {}
                     for item in session.items:
@@ -217,7 +226,7 @@ def pytest_sessionfinish(session, exitstatus):
                     brightest_data[TEST_COSTS] = test_costs
                 elif (
                     _plugin.technique
-                    and _plugin.focus == "tests-within-module"
+                    and _plugin.focus == TESTS_WITHIN_MODULE
                 ):
                     module_tests: Dict[str, List[str]] = {}
                     for item in session.items:
@@ -229,8 +238,8 @@ def pytest_sessionfinish(session, exitstatus):
                             module_tests[module_path].append(nodeid)
                     brightest_data["module_tests"] = module_tests
                 elif (
-                    _plugin.technique == "name"
-                    and _plugin.focus == "modules-within-suite"
+                    _plugin.technique == NAME
+                    and _plugin.focus == MODULES_WITHIN_SUITE
                 ):
                     module_order = []
                     for item in session.items:

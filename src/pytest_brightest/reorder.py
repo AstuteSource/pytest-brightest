@@ -7,13 +7,18 @@ from typing import Any, Dict, List, Optional, Tuple
 from rich.console import Console
 
 from .constants import (
+    ASCENDING,
     CALL,
     CALL_DURATION,
+    COST,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DURATION,
     EMPTY_STRING,
+    FAILURE,
     JSON_REPORT_FILE,
+    MODULES_WITHIN_SUITE,
+    NAME,
     NODEID,
     OUTCOME,
     PYTEST_CACHE_DIR,
@@ -24,6 +29,8 @@ from .constants import (
     TEARDOWN,
     TEARDOWN_DURATION,
     TESTS,
+    TESTS_ACROSS_MODULES,
+    TESTS_WITHIN_MODULE,
     TOTAL_DURATION,
     UNKNOWN,
     ZERO_COST,
@@ -243,11 +250,11 @@ class TestReorderer:
             console.print(
                 f":flashlight: pytest-brightest: Reordering tests in module {module}"
             )
-            if reorder_by == "cost":
+            if reorder_by == COST:
                 module_items[module].sort(
                     key=self.get_test_total_duration, reverse=not ascending
                 )
-            elif reorder_by == "name":
+            elif reorder_by == NAME:
                 # when sorting by name, the direction can be ascending or descending
                 # and the key for sorting is the nodeid of the test item
                 if ascending:
@@ -272,39 +279,38 @@ class TestReorderer:
         if not items:
             return
         # the reorder direction is either ascending or descending
-        ascending = reorder == "ascending"
+        ascending = reorder == ASCENDING
         # reorder the modules within the suite by their cumulative cost
-        if focus == "modules-within-suite":
-            if reorder_by == "cost":
+        if focus == MODULES_WITHIN_SUITE:
+            if reorder_by == COST:
                 self.reorder_modules_by_cost(items, ascending)
-            elif reorder_by == "name":
+            elif reorder_by == NAME:
                 self.reorder_modules_by_name(items, ascending)
             else:
                 console.print(
                     f":high_brightness: pytest-brightest: Reordering by {reorder_by} is not supported with focus 'modules-within-suite'"
                 )
         # reordering tests within a module
-        elif focus == "tests-within-module":
+        elif focus == TESTS_WITHIN_MODULE:
             self.reorder_tests_within_module(items, reorder_by, ascending)
         # reorder the tests across all modules in the suite
-        elif focus == "tests-across-modules":
-            if reorder_by == "cost":
-                items.sort(
-                    key=self.get_test_total_duration, reverse=not ascending
-                )
-            elif reorder_by == "name":
-                items.sort(
-                    key=lambda item: getattr(item, NODEID, ""),
-                    reverse=not ascending,
-                )
-            elif reorder_by == "failure":
-                passing_tests, failing_tests = self.classify_tests_by_outcome(
-                    items
-                )
-                if ascending:
-                    items[:] = passing_tests + failing_tests
-                else:
-                    items[:] = failing_tests + passing_tests
+        elif focus == TESTS_ACROSS_MODULES:
+            self.reorder_tests_across_modules(items, reorder_by, ascending)
+
+    def reorder_tests_across_modules(
+        self, items: List[Any], reorder_by: str, ascending: bool = True
+    ) -> None:
+        """Reorder tests across all modules by the specified technique."""
+        if reorder_by == COST:
+            items.sort(key=self.get_test_total_duration, reverse=not ascending)
+        elif reorder_by == NAME:
+            items.sort(key=lambda item: getattr(item, "name", ""), reverse=not ascending)
+        elif reorder_by == FAILURE:
+            passing_tests, failing_tests = self.classify_tests_by_outcome(items)
+            if ascending:
+                items[:] = passing_tests + failing_tests
+            else:
+                items[:] = failing_tests + passing_tests
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""

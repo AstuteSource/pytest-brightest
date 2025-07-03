@@ -40,6 +40,7 @@ ZERO_COST = 0.0
 BRIGHTEST = "brightest"
 TIMESTAMP = "timestamp"
 TECHNIQUE = "technique"
+FAILURE = "failure"
 FOCUS = "focus"
 DIRECTION = "direction"
 SEED = "seed"
@@ -48,3 +49,17 @@ TEST_COSTS = "test_costs"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 PYTEST_BRIGHTEST_OUT = "pytest-brightest-output"
 PYTEST_BRIGHTEST_OUT_JSON = "pytest-brightest-output.json"
+
+# define constants for reordering techniques
+SHUFFLE = "shuffle"
+NAME = "name"
+COST = "cost"
+
+# define constants for reordering focus
+MODULES_WITHIN_SUITE = "modules-within-suite"
+TESTS_WITHIN_MODULE = "tests-within-module"
+TESTS_ACROSS_MODULES = "tests-across-modules"
+
+# define constants for reordering direction
+ASCENDING = "ascending"
+DESCENDING = "descending"
