@@ -203,9 +203,7 @@ class TestReorderer:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
         # sort the modules by their name
-        sorted_modules = sorted(
-            module_items.keys(), reverse=not ascending
-        )
+        sorted_modules = sorted(module_items.keys(), reverse=not ascending)
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
@@ -216,6 +214,52 @@ class TestReorderer:
             console.print(
                 f":flashlight: pytest-brightest: Module {module} is in the reordered suite"
             )
+            reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
+        items[:] = reordered_items
+
+    def reorder_tests_within_module(
+        self, items: List[Any], reorder_by: str, ascending: bool = True
+    ) -> None:
+        """Reorder tests within each module by the specified technique."""
+        module_items: Dict[str, List[Any]] = {}
+        module_order: List[str] = []
+        # iterate over each item and group them by module
+        for item in items:
+            nodeid = getattr(item, NODEID, "")
+            if nodeid:
+                module_path = nodeid.split("::")[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                    module_order.append(module_path)
+                module_items[module_path].append(item)
+        reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared before
+        if module_order:
+            console.print()
+        # iterate over the modules and reorder the tests within each module
+        for module in module_order:
+            console.print(
+                f":flashlight: pytest-brightest: Reordering tests in module {module}"
+            )
+            if reorder_by == "cost":
+                module_items[module].sort(
+                    key=self.get_test_total_duration, reverse=not ascending
+                )
+            elif reorder_by == "name":
+                # when sorting by name, the direction can be ascending or descending
+                # and the key for sorting is the nodeid of the test item
+                if ascending:
+                    module_items[module].sort(
+                        key=lambda item: getattr(item, NODEID, ""),
+                        reverse=False,
+                    )
+                else:
+                    module_items[module].sort(
+                        key=lambda item: getattr(item, NODEID, ""),
+                        reverse=True,
+                    )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
         items[:] = reordered_items
@@ -239,11 +283,9 @@ class TestReorderer:
                 console.print(
                     f":high_brightness: pytest-brightest: Reordering by {reorder_by} is not supported with focus 'modules-within-suite'"
                 )
-        # reordering tests within a module is not yet implemented
+        # reordering tests within a module
         elif focus == "tests-within-module":
-            console.print(
-                ":high_brightness: pytest-brightest: Reordering with focus 'tests-within-module' is not yet implemented"
-            )
+            self.reorder_tests_within_module(items, reorder_by, ascending)
         # reorder the tests across all modules in the suite
         elif focus == "tests-across-modules":
             if reorder_by == "cost":
