@@ -17,17 +17,17 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
-    MODULES_WITHIN_SUITE,
     MODULE_COSTS,
+    MODULES_WITHIN_SUITE,
     NAME,
     NEWLINE,
     NODEID,
     SEED,
     SHUFFLE,
     TECHNIQUE,
+    TEST_COSTS,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
-    TEST_COSTS,
     TIMESTAMP,
 )
 from .reorder import TestReorderer, setup_json_report_plugin
@@ -190,7 +190,7 @@ def pytest_collection_modifyitems(config, items):
             _plugin.shuffle_tests(items)
 
 
-def pytest_sessionfinish(session, exitstatus):
+def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
     """Check if JSON file from pytest-json-report exists after test session completes."""
     # indicate that these parameters are not used
     _ = exitstatus
@@ -215,7 +215,7 @@ def pytest_sessionfinish(session, exitstatus):
                         nodeid = getattr(item, NODEID, "")
                         if nodeid:
                             module_path = nodeid.split("::")[0]
-                            cost = _plugin.reorderer.get_test_total_duration(
+                            cost = _plugin.reorderer.get_test_total_duration(  # type: ignore
                                 item
                             )
                             module_costs[module_path] = (
@@ -225,8 +225,7 @@ def pytest_sessionfinish(session, exitstatus):
                     brightest_data[MODULE_COSTS] = module_costs
                     brightest_data[TEST_COSTS] = test_costs
                 elif (
-                    _plugin.technique
-                    and _plugin.focus == TESTS_WITHIN_MODULE
+                    _plugin.technique and _plugin.focus == TESTS_WITHIN_MODULE
                 ):
                     module_tests: Dict[str, List[str]] = {}
                     for item in session.items:
@@ -268,3 +267,4 @@ def pytest_sessionfinish(session, exitstatus):
             console.print(
                 ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
+

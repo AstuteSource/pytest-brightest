@@ -58,7 +58,9 @@ class ShufflerOfTests:
         for item in items:
             # pytest items have an fspath attribute that contains the path to the file
             # and we can also use the path attribute as a fallback
-            file_path = getattr(item, FSPATH, str(getattr(item, PATH, UNKNOWN)))
+            file_path = getattr(
+                item, FSPATH, str(getattr(item, PATH, UNKNOWN))
+            )
             file_path_str = str(file_path)
             # if the file path is not already in the file_groups dictionary,
             # add it and also add it to the file_order list
@@ -91,7 +93,9 @@ class ShufflerOfTests:
         for item in items:
             # pytest items have an fspath attribute that contains the path to the file
             # and we can also use the path attribute as a fallback
-            file_path = getattr(item, FSPATH, str(getattr(item, PATH, UNKNOWN)))
+            file_path = getattr(
+                item, FSPATH, str(getattr(item, PATH, UNKNOWN))
+            )
             file_path_str = str(file_path)
             # if the file path is not already in the file_groups dictionary,
             # add it and also add it to the file_order list

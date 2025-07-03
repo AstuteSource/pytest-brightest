@@ -304,9 +304,14 @@ class TestReorderer:
         if reorder_by == COST:
             items.sort(key=self.get_test_total_duration, reverse=not ascending)
         elif reorder_by == NAME:
-            items.sort(key=lambda item: getattr(item, "name", ""), reverse=not ascending)
+            items.sort(
+                key=lambda item: getattr(item, "name", ""),
+                reverse=not ascending,
+            )
         elif reorder_by == FAILURE:
-            passing_tests, failing_tests = self.classify_tests_by_outcome(items)
+            passing_tests, failing_tests = self.classify_tests_by_outcome(
+                items
+            )
             if ascending:
                 items[:] = passing_tests + failing_tests
             else:
@@ -377,3 +382,4 @@ def setup_json_report_plugin(config) -> bool:
             f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
         )
         return False
+
