@@ -54,6 +54,7 @@ class ReordererOfTests:
         # that enables them to be reordered; for instance, it stores
         # information about the cumulative execution time of a test
         self.test_data: Dict[str, Dict[str, Any]] = {}
+        self.last_module_failure_counts: Optional[Dict[str, int]] = None
         # extract the data from the pytest-json-report that was found
         # and store it in the dictionary called test_data
         self.load_test_data()
@@ -241,6 +242,9 @@ class ReordererOfTests:
                 if self.get_test_outcome(item) in ["failed", "error"]:
                     module_failure_counts[module_path] += 1
                 module_items[module_path].append(item)
+
+        self.last_module_failure_counts = module_failure_counts
+
         sorted_modules = sorted(
             module_failure_counts.keys(),
             key=lambda m: module_failure_counts[m],
