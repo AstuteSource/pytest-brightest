@@ -225,6 +225,37 @@ class ReordererOfTests:
         # replace the original list of items with the reordered list
         items[:] = reordered_items
 
+    def reorder_modules_by_failure(
+        self, items: List[Any], ascending: bool = True
+    ) -> None:
+        """Reorder test modules by their number of failing tests."""
+        module_failure_counts: Dict[str, int] = {}
+        module_items: Dict[str, List[Any]] = {}
+        for item in items:
+            nodeid = getattr(item, NODEID, "")
+            if nodeid:
+                module_path = nodeid.split("::")[0]
+                if module_path not in module_failure_counts:
+                    module_failure_counts[module_path] = 0
+                    module_items[module_path] = []
+                if self.get_test_outcome(item) in ["failed", "error"]:
+                    module_failure_counts[module_path] += 1
+                module_items[module_path].append(item)
+        sorted_modules = sorted(
+            module_failure_counts.keys(),
+            key=lambda m: module_failure_counts[m],
+            reverse=not ascending,
+        )
+        reordered_items = []
+        if sorted_modules:
+            console.print()
+        for module in sorted_modules:
+            console.print(
+                f":flashlight: pytest-brightest: Module {module} has {module_failure_counts[module]} failing tests"
+            )
+            reordered_items.extend(module_items[module])
+        items[:] = reordered_items
+
     def reorder_tests_within_module(
         self, items: List[Any], reorder_by: str, ascending: bool = True
     ) -> None:
@@ -286,10 +317,8 @@ class ReordererOfTests:
                 self.reorder_modules_by_cost(items, ascending)
             elif reorder_by == NAME:
                 self.reorder_modules_by_name(items, ascending)
-            else:
-                console.print(
-                    f":high_brightness: pytest-brightest: Reordering by {reorder_by} is not supported with focus 'modules-within-suite'"
-                )
+            elif reorder_by == FAILURE:
+                self.reorder_modules_by_failure(items, ascending)
         # reordering tests within a module
         elif focus == TESTS_WITHIN_MODULE:
             self.reorder_tests_within_module(items, reorder_by, ascending)
