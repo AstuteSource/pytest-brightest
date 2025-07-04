@@ -8,6 +8,7 @@ from rich.console import Console
 
 from .constants import (
     ASCENDING,
+    BRIGHTEST,
     CALL,
     CALL_DURATION,
     COST,
@@ -21,6 +22,12 @@ from .constants import (
     NAME,
     NODEID,
     OUTCOME,
+    PRIOR_MODULE_COSTS,
+    PRIOR_MODULE_FAILURE_COUNTS,
+    PRIOR_MODULE_ORDER,
+    PRIOR_MODULE_TESTS,
+    PRIOR_TEST_COSTS,
+    PRIOR_TEST_ORDER,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
     REPORT_JSON,
@@ -55,6 +62,7 @@ class ReordererOfTests:
         # information about the cumulative execution time of a test
         self.test_data: Dict[str, Dict[str, Any]] = {}
         self.last_module_failure_counts: Optional[Dict[str, int]] = None
+        self.brightest_data: Optional[Dict[str, Any]] = None
         # extract the data from the pytest-json-report that was found
         # and store it in the dictionary called test_data
         self.load_test_data()
@@ -73,6 +81,8 @@ class ReordererOfTests:
             with report_path.open("r", encoding=DEFAULT_FILE_ENCODING) as file:
                 # load the JSON data from the file
                 data = json.load(file)
+                # store the brightest data if it exists for historical information
+                self.brightest_data = data.get(BRIGHTEST, {})
                 # there is data about test cases
                 # that were executed in the list of test information
                 if TESTS in data:
@@ -157,6 +167,66 @@ class ReordererOfTests:
         return sorted(
             items, key=self.get_test_total_duration, reverse=not ascending
         )
+
+    def get_prior_data_for_reordering(
+        self, items: List[Any], technique: str, focus: str
+    ) -> Dict[str, Any]:
+        """Get the prior data that was used for reordering during this session."""
+        prior_data = {}
+        if technique == COST:
+            module_costs: Dict[str, float] = {}
+            test_costs: Dict[str, float] = {}
+            for item in items:
+                nodeid = getattr(item, NODEID, "")
+                if nodeid:
+                    cost = self.get_test_total_duration(item)
+                    module_path = nodeid.split("::")[0]
+                    module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+                    test_costs[nodeid] = cost
+            if focus == MODULES_WITHIN_SUITE:
+                prior_data[PRIOR_MODULE_COSTS] = module_costs
+            elif focus == TESTS_WITHIN_MODULE:
+                prior_data[PRIOR_MODULE_COSTS] = module_costs
+                prior_data[PRIOR_TEST_COSTS] = test_costs
+            elif focus == TESTS_ACROSS_MODULES:
+                prior_data[PRIOR_TEST_COSTS] = test_costs
+        elif technique == NAME:
+            if focus == MODULES_WITHIN_SUITE:
+                module_order = []
+                for item in items:
+                    nodeid = getattr(item, NODEID, "")
+                    if nodeid:
+                        module_path = nodeid.split("::")[0]
+                        if module_path not in module_order:
+                            module_order.append(module_path)
+                prior_data[PRIOR_MODULE_ORDER] = module_order
+            elif focus == TESTS_ACROSS_MODULES:
+                prior_data[PRIOR_TEST_ORDER] = [
+                    getattr(item, NODEID, "") for item in items
+                ]
+            elif focus == TESTS_WITHIN_MODULE:
+                module_tests: Dict[str, List[str]] = {}
+                for item in items:
+                    nodeid = getattr(item, NODEID, "")
+                    if nodeid:
+                        module_path = nodeid.split("::")[0]
+                        if module_path not in module_tests:
+                            module_tests[module_path] = []
+                        module_tests[module_path].append(nodeid)
+                prior_data[PRIOR_MODULE_TESTS] = module_tests
+        elif technique == FAILURE:
+            module_failure_counts: Dict[str, int] = {}
+            for item in items:
+                nodeid = getattr(item, NODEID, "")
+                if nodeid:
+                    module_path = nodeid.split("::")[0]
+                    if module_path not in module_failure_counts:
+                        module_failure_counts[module_path] = 0
+                    if self.get_test_outcome(item) in ["failed", "error"]:
+                        module_failure_counts[module_path] += 1
+            if focus == MODULES_WITHIN_SUITE:
+                prior_data[PRIOR_MODULE_FAILURE_COUNTS] = module_failure_counts
+        return prior_data
 
     def reorder_modules_by_cost(
         self, items: List[Any], ascending: bool = True
@@ -361,9 +431,7 @@ class ReordererOfTests:
         return bool(self.test_data)
 
 
-def create_reorderer(
-    json_report_path: Optional[str] = None,
-) -> ReordererOfTests:
+def create_reorderer(json_report_path: Optional[str] = None) -> ReordererOfTests:
     """Create a TestReorderer instance."""
     # create a TestReorderer instance that
     # can be used to reorder based on
