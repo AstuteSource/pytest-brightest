@@ -48,6 +48,8 @@ dev = [
     "taskipy>=1.14.1",
     "ty>=0.0.1a12",
     "pytest-mock>=3.12.0",
+    "pytest-clarity>=1.0.1",
+    "pytest-sugar>=1.0.0",
 ]
 
 [tool.ruff]
