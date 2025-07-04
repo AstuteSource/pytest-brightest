@@ -3,13 +3,15 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from rich.console import Console
 
 from .constants import (
     ASCENDING,
     BRIGHTEST,
+    CALL,
+    CALL_DURATION,
     COST,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
@@ -17,21 +19,36 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
+    JSON_REPORT_FILE,
     MODULE_COSTS,
+    MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
     MODULE_TESTS,
     MODULES_WITHIN_SUITE,
     NAME,
     NEWLINE,
     NODEID,
+    OUTCOME,
+    PATH,
+    PYTEST_CACHE_DIR,
+    PYTEST_JSON_REPORT_PLUGIN_NAME,
+    REPORT_JSON,
     SEED,
+    SETUP,
+    SETUP_DURATION,
     SHUFFLE,
     TECHNIQUE,
+    TEARDOWN,
+    TEARDOWN_DURATION,
+    TESTS,
     TEST_COSTS,
     TEST_ORDER,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
     TIMESTAMP,
+    TOTAL_DURATION,
+    UNKNOWN,
+    ZERO_COST,
 )
 from .reorder import ReordererOfTests, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
@@ -199,6 +216,116 @@ def pytest_collection_modifyitems(config, items):
             _plugin.shuffle_tests(items)
 
 
+# def _get_brightest_data(session: Any) -> Dict[str, Any]:
+#     """Collect brightest data for the JSON report."""
+#     brightest_data = {
+#         TIMESTAMP: datetime.now().isoformat(),
+#         TECHNIQUE: _plugin.technique,
+#         FOCUS: _plugin.focus,
+#         DIRECTION: _plugin.direction,
+#         SEED: _plugin.seed,
+#     }
+#     if _plugin.technique == COST and _plugin.reorderer:
+#         module_costs: Dict[str, float] = {}
+#         test_costs: Dict[str, float] = {}
+#         for item in session.items:
+#             nodeid = getattr(item, NODEID, "")
+#             if nodeid:
+#                 module_path = nodeid.split("::")[0]
+#                 cost = _plugin.reorderer.get_test_total_duration(  # type: ignore
+#                     item
+#                 )
+#                 module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+#                 test_costs[nodeid] = cost
+#         brightest_data[MODULE_COSTS] = module_costs
+#         brightest_data[TEST_COSTS] = test_costs
+#     elif _plugin.technique == NAME:
+#         if _plugin.focus == MODULES_WITHIN_SUITE:
+#             module_order = []
+#             for item in session.items:
+#                 nodeid = getattr(item, NODEID, "")
+#                 if nodeid:
+#                     module_path = nodeid.split("::")[0]
+#                     if module_path not in module_order:
+#                         module_order.append(module_path)
+#             brightest_data[MODULE_ORDER] = module_order
+#         elif _plugin.focus == TESTS_ACROSS_MODULES:
+#             brightest_data[TEST_ORDER] = [
+#                 getattr(item, NODEID, "") for item in session.items
+#             ]
+#         elif _plugin.focus == TESTS_WITHIN_MODULE:
+#             module_tests: Dict[str, List[str]] = {}
+#             for item in session.items:
+#                 nodeid = getattr(item, NODEID, "")
+#                 if nodeid:
+#                     module_path = nodeid.split("::")[0]
+#                     if module_path not in module_tests:
+#                         module_tests[module_path] = []
+#                     module_tests[module_path].append(nodeid)
+#             brightest_data[MODULE_TESTS] = module_tests
+#     elif _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE:
+#         if _plugin.reorderer and _plugin.reorderer.last_module_failure_counts:
+#             brightest_data[MODULE_FAILURE_COUNTS] = (
+#                 _plugin.reorderer.last_module_failure_counts
+#             )
+#     return brightest_data
+
+
+def _get_brightest_data(session: Any) -> Dict[str, Any]:
+    """Collect brightest data for the JSON report."""
+    brightest_data = {
+        TIMESTAMP: datetime.now().isoformat(),
+        TECHNIQUE: _plugin.technique,
+        FOCUS: _plugin.focus,
+        DIRECTION: _plugin.direction,
+        SEED: _plugin.seed,
+    }
+    if _plugin.technique == COST and _plugin.reorderer:
+        module_costs: Dict[str, float] = {}
+        test_costs: Dict[str, float] = {}
+        for item in session.items:
+            nodeid = getattr(item, NODEID, "")
+            if nodeid:
+                cost = _plugin.reorderer.get_test_total_duration(  # type: ignore
+                    item
+                )
+                module_path = nodeid.split("::")[0]
+                module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+                test_costs[nodeid] = cost
+        brightest_data[MODULE_COSTS] = module_costs
+        brightest_data[TEST_COSTS] = test_costs
+    elif _plugin.technique == NAME:
+        if _plugin.focus == MODULES_WITHIN_SUITE:
+            module_order = []
+            for item in session.items:
+                nodeid = getattr(item, NODEID, "")
+                if nodeid:
+                    module_path = nodeid.split("::")[0]
+                    if module_path not in module_order:
+                        module_order.append(module_path)
+            brightest_data[MODULE_ORDER] = module_order
+        elif _plugin.focus == TESTS_ACROSS_MODULES:
+            brightest_data[TEST_ORDER] = [
+                getattr(item, NODEID, "") for item in session.items
+            ]
+        elif _plugin.focus == TESTS_WITHIN_MODULE:
+            module_tests: Dict[str, List[str]] = {}
+            for item in session.items:
+                nodeid = getattr(item, NODEID, "")
+                if nodeid:
+                    module_path = nodeid.split("::")[0]
+                    if module_path not in module_tests:
+                        module_tests[module_path] = []
+                    module_tests[module_path].append(nodeid)
+            brightest_data[MODULE_TESTS] = module_tests
+    elif _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE:
+        if _plugin.reorderer and _plugin.reorderer.last_module_failure_counts:
+            brightest_data[MODULE_FAILURE_COUNTS] = (
+                _plugin.reorderer.last_module_failure_counts
+            )
+    return brightest_data
+
+
 def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
     """Check if JSON file from pytest-json-report exists after test session completes."""
     # indicate that these parameters are not used
@@ -210,56 +337,7 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
         if json_file.exists():
             with json_file.open("r+", encoding=DEFAULT_FILE_ENCODING) as f:
                 data = json.load(f)
-                brightest_data = {
-                    TIMESTAMP: datetime.now().isoformat(),
-                    TECHNIQUE: _plugin.technique,
-                    FOCUS: _plugin.focus,
-                    DIRECTION: _plugin.direction,
-                    SEED: _plugin.seed,
-                }
-                # save the data about the cost-based reordering
-                if _plugin.technique == COST and _plugin.reorderer:
-                    module_costs: Dict[str, float] = {}
-                    test_costs: Dict[str, float] = {}
-                    for item in session.items:
-                        nodeid = getattr(item, NODEID, "")
-                        if nodeid:
-                            module_path = nodeid.split("::")[0]
-                            cost = _plugin.reorderer.get_test_total_duration(  # type: ignore
-                                item
-                            )
-                            module_costs[module_path] = (
-                                module_costs.get(module_path, 0.0) + cost
-                            )
-                            test_costs[nodeid] = cost
-                    brightest_data[MODULE_COSTS] = module_costs
-                    brightest_data[TEST_COSTS] = test_costs
-                # save the data about the name-based reordering
-                elif _plugin.technique == NAME:
-                    if _plugin.focus == MODULES_WITHIN_SUITE:
-                        module_order = []
-                        for item in session.items:
-                            nodeid = getattr(item, NODEID, "")
-                            if nodeid:
-                                module_path = nodeid.split("::")[0]
-                                if module_path not in module_order:
-                                    module_order.append(module_path)
-                        brightest_data[MODULE_ORDER] = module_order
-                    elif _plugin.focus == TESTS_ACROSS_MODULES:
-                        brightest_data[TEST_ORDER] = [
-                            getattr(item, NODEID, "") for item in session.items
-                        ]
-                    elif _plugin.focus == TESTS_WITHIN_MODULE:
-                        module_tests: Dict[str, List[str]] = {}
-                        for item in session.items:
-                            nodeid = getattr(item, NODEID, "")
-                            if nodeid:
-                                module_path = nodeid.split("::")[0]
-                                if module_path not in module_tests:
-                                    module_tests[module_path] = []
-                                module_tests[module_path].append(nodeid)
-                        brightest_data[MODULE_TESTS] = module_tests
-                data[BRIGHTEST] = brightest_data
+                data[BRIGHTEST] = _get_brightest_data(session)
                 f.seek(0)
                 json.dump(data, f, indent=4)
                 f.truncate()
