@@ -57,6 +57,7 @@ class BrightestPlugin:
         self.reorder = None
         self.reorderer: Optional[ReordererOfTests] = None
         self.brightest_json_file: Optional[str] = None
+        self.current_session_failures: Dict[str, int] = {}
 
     def configure(self, config) -> None:
         """Configure the plugin based on command-line options."""
@@ -108,6 +109,14 @@ class BrightestPlugin:
             console.print(
                 f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )
+
+    def record_test_failure(self, nodeid: str) -> None:
+        """Record a test failure for the current session."""
+        if nodeid:
+            module_path = nodeid.split("::")[0]
+            if module_path not in self.current_session_failures:
+                self.current_session_failures[module_path] = 0
+            self.current_session_failures[module_path] += 1
 
     def shuffle_tests(self, items: List) -> None:
         """Shuffle test items if shuffling is enabled."""
@@ -200,59 +209,10 @@ def pytest_collection_modifyitems(config, items):
             _plugin.shuffle_tests(items)
 
 
-# def _get_brightest_data(session: Any) -> Dict[str, Any]:
-#     """Collect brightest data for the JSON report."""
-#     brightest_data = {
-#         TIMESTAMP: datetime.now().isoformat(),
-#         TECHNIQUE: _plugin.technique,
-#         FOCUS: _plugin.focus,
-#         DIRECTION: _plugin.direction,
-#         SEED: _plugin.seed,
-#     }
-#     if _plugin.technique == COST and _plugin.reorderer:
-#         module_costs: Dict[str, float] = {}
-#         test_costs: Dict[str, float] = {}
-#         for item in session.items:
-#             nodeid = getattr(item, NODEID, "")
-#             if nodeid:
-#                 module_path = nodeid.split("::")[0]
-#                 cost = _plugin.reorderer.get_test_total_duration(  # type: ignore
-#                     item
-#                 )
-#                 module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
-#                 test_costs[nodeid] = cost
-#         brightest_data[MODULE_COSTS] = module_costs
-#         brightest_data[TEST_COSTS] = test_costs
-#     elif _plugin.technique == NAME:
-#         if _plugin.focus == MODULES_WITHIN_SUITE:
-#             module_order = []
-#             for item in session.items:
-#                 nodeid = getattr(item, NODEID, "")
-#                 if nodeid:
-#                     module_path = nodeid.split("::")[0]
-#                     if module_path not in module_order:
-#                         module_order.append(module_path)
-#             brightest_data[MODULE_ORDER] = module_order
-#         elif _plugin.focus == TESTS_ACROSS_MODULES:
-#             brightest_data[TEST_ORDER] = [
-#                 getattr(item, NODEID, "") for item in session.items
-#             ]
-#         elif _plugin.focus == TESTS_WITHIN_MODULE:
-#             module_tests: Dict[str, List[str]] = {}
-#             for item in session.items:
-#                 nodeid = getattr(item, NODEID, "")
-#                 if nodeid:
-#                     module_path = nodeid.split("::")[0]
-#                     if module_path not in module_tests:
-#                         module_tests[module_path] = []
-#                     module_tests[module_path].append(nodeid)
-#             brightest_data[MODULE_TESTS] = module_tests
-#     elif _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE:
-#         if _plugin.reorderer and _plugin.reorderer.last_module_failure_counts:
-#             brightest_data[MODULE_FAILURE_COUNTS] = (
-#                 _plugin.reorderer.last_module_failure_counts
-#             )
-#     return brightest_data
+def pytest_runtest_logreport(report):
+    """Capture test failures during the current session."""
+    if _plugin.enabled and _plugin.technique == FAILURE and report.failed:
+        _plugin.record_test_failure(report.nodeid)
 
 
 def _get_brightest_data(session: Any) -> Dict[str, Any]:
@@ -303,10 +263,9 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:
                     module_tests[module_path].append(nodeid)
             brightest_data[MODULE_TESTS] = module_tests
     elif _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE:
-        if _plugin.reorderer and _plugin.reorderer.last_module_failure_counts:
-            brightest_data[MODULE_FAILURE_COUNTS] = (
-                _plugin.reorderer.last_module_failure_counts
-            )
+        # save the current session failure counts for future use
+        if _plugin.current_session_failures:
+            brightest_data[MODULE_FAILURE_COUNTS] = _plugin.current_session_failures
     return brightest_data
 
 
@@ -340,3 +299,4 @@ def pytest_sessionfinish(session, exitstatus):
             console.print(
                 ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
+

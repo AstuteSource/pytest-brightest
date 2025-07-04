@@ -229,9 +229,10 @@ class ReordererOfTests:
     def reorder_modules_by_failure(
         self, items: List[Any], ascending: bool = True
     ) -> None:
-        """Reorder test modules by their number of failing tests."""
+        """Reorder test modules by their number of failing tests from previous runs."""
         module_failure_counts: Dict[str, int] = {}
         module_items: Dict[str, List[Any]] = {}
+        # iterate over each item and group them by module
         for item in items:
             nodeid = getattr(item, NODEID, "")
             if nodeid:
@@ -239,25 +240,30 @@ class ReordererOfTests:
                 if module_path not in module_failure_counts:
                     module_failure_counts[module_path] = 0
                     module_items[module_path] = []
+                # get the test outcome from previous run data
                 if self.get_test_outcome(item) in ["failed", "error"]:
                     module_failure_counts[module_path] += 1
                 module_items[module_path].append(item)
-
+        # store the failure counts for potential use in reporting
         self.last_module_failure_counts = module_failure_counts
-
+        # sort the modules by their failure count
         sorted_modules = sorted(
             module_failure_counts.keys(),
             key=lambda m: module_failure_counts[m],
             reverse=not ascending,
         )
         reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared before
         if sorted_modules:
             console.print()
+        # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
-                f":flashlight: pytest-brightest: Module {module} has {module_failure_counts[module]} failing tests"
+                f":flashlight: pytest-brightest: Module {module} has {module_failure_counts[module]} failing tests from previous run"
             )
             reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
         items[:] = reordered_items
 
     def reorder_tests_within_module(
@@ -355,7 +361,9 @@ class ReordererOfTests:
         return bool(self.test_data)
 
 
-def create_reorderer(json_report_path: Optional[str] = None) -> ReordererOfTests:
+def create_reorderer(
+    json_report_path: Optional[str] = None,
+) -> ReordererOfTests:
     """Create a TestReorderer instance."""
     # create a TestReorderer instance that
     # can be used to reorder based on
@@ -415,4 +423,3 @@ def setup_json_report_plugin(config) -> bool:
             f":high_brightness: pytest-brightest: pytest-json report not setup: {e}"
         )
         return False
-
