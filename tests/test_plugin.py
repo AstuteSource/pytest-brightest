@@ -94,6 +94,26 @@ class TestBrightestPlugin:
         # This test is not complete as it requires a json file
         assert [item.name for item in items] == ["slow", "fast"]
 
+    def test_configure_shuffle_with_direction_warning(
+        self, mock_config, mocker
+    ):
+        """Test that a warning is issued when shuffling with a direction."""
+        mock_console_print = mocker.patch(
+            "pytest_brightest.plugin.console.print"
+        )
+        plugin = BrightestPlugin()
+        config = mock_config(
+            {
+                "--brightest": True,
+                "--reorder-by-technique": "shuffle",
+                "--reorder-in-direction": "descending",
+            }
+        )
+        plugin.configure(config)
+        mock_console_print.assert_any_call(
+            ":high_brightness: pytest-brightest: Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
+        )
+
 
 class TestHooks:
     """A container for all the tests of the hooks."""
