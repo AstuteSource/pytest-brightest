@@ -126,6 +126,58 @@ class TestReordererOfTests:
             "test_fast",
         ]
 
+    def test_reorder_modules_by_failure(self, tmp_path, mock_test_item, mocker):
+        """Test reordering modules by failure count."""
+        json_path = tmp_path / "report.json"
+        data = {
+            "tests": [
+                {"nodeid": "module_a.py::test_a1", "outcome": "passed"},
+                {"nodeid": "module_a.py::test_a2", "outcome": "failed"},
+                {"nodeid": "module_b.py::test_b1", "outcome": "passed"},
+                {"nodeid": "module_b.py::test_b2", "outcome": "failed"},
+                {"nodeid": "module_b.py::test_b3", "outcome": "failed"},
+                {"nodeid": "module_c.py::test_c1", "outcome": "passed"},
+            ]
+        }
+        json_path.write_text(json.dumps(data))
+        reorderer = ReordererOfTests(str(json_path))
+        items = [
+            mock_test_item("module_a.py::test_a1"),
+            mock_test_item("module_a.py::test_a2"),
+            mock_test_item("module_b.py::test_b1"),
+            mock_test_item("module_b.py::test_b2"),
+            mock_test_item("module_b.py::test_b3"),
+            mock_test_item("module_c.py::test_c1"),
+        ]
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer.reorder_modules_by_failure(items, ascending=True)
+        assert [item.name for item in items] == [
+            "module_c.py::test_c1",
+            "module_a.py::test_a1",
+            "module_a.py::test_a2",
+            "module_b.py::test_b1",
+            "module_b.py::test_b2",
+            "module_b.py::test_b3",
+        ]
+
+        items = [
+            mock_test_item("module_a.py::test_a1"),
+            mock_test_item("module_a.py::test_a2"),
+            mock_test_item("module_b.py::test_b1"),
+            mock_test_item("module_b.py::test_b2"),
+            mock_test_item("module_b.py::test_b3"),
+            mock_test_item("module_c.py::test_c1"),
+        ]
+        reorderer.reorder_modules_by_failure(items, ascending=False)
+        assert [item.name for item in items] == [
+            "module_b.py::test_b1",
+            "module_b.py::test_b2",
+            "module_b.py::test_b3",
+            "module_a.py::test_a1",
+            "module_a.py::test_a2",
+            "module_c.py::test_c1",
+        ]
+
     def test_reorder_modules_by_cost(self, tmp_path, mock_test_item, mocker):
         """Test reordering modules by cost."""
         json_path = tmp_path / "report.json"
