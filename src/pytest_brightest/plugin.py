@@ -278,4 +278,3 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
             console.print(
                 ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
             )
-
