@@ -93,6 +93,10 @@ class BrightestPlugin:
             console.print(
                 f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
+            if self.direction is not None:
+                console.print(
+                    ":high_brightness: pytest-brightest: Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
+                )
         # if the reordering technique is chosen, then configure the reorderer
         elif self.technique in [NAME, COST, FAILURE]:
             self.reorder_enabled = True
@@ -170,7 +174,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--reorder-in-direction",
         choices=[ASCENDING, DESCENDING],
-        default=ASCENDING,
+        default=None,
         help="Reordered tests in ascending or descending order",
     )
 
