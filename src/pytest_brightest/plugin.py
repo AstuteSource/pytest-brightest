@@ -3,15 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
 from .constants import (
     ASCENDING,
     BRIGHTEST,
-    CALL,
-    CALL_DURATION,
     COST,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
@@ -19,7 +17,6 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
-    JSON_REPORT_FILE,
     MODULE_COSTS,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
@@ -28,27 +25,14 @@ from .constants import (
     NAME,
     NEWLINE,
     NODEID,
-    OUTCOME,
-    PATH,
-    PYTEST_CACHE_DIR,
-    PYTEST_JSON_REPORT_PLUGIN_NAME,
-    REPORT_JSON,
     SEED,
-    SETUP,
-    SETUP_DURATION,
     SHUFFLE,
     TECHNIQUE,
-    TEARDOWN,
-    TEARDOWN_DURATION,
-    TESTS,
     TEST_COSTS,
     TEST_ORDER,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
     TIMESTAMP,
-    TOTAL_DURATION,
-    UNKNOWN,
-    ZERO_COST,
 )
 from .reorder import ReordererOfTests, setup_json_report_plugin
 from .shuffler import ShufflerOfTests, generate_random_seed
@@ -326,7 +310,7 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:
     return brightest_data
 
 
-def pytest_sessionfinish(session, exitstatus):  # noqa: PLR0912
+def pytest_sessionfinish(session, exitstatus):
     """Check if JSON file from pytest-json-report exists after test session completes."""
     # indicate that these parameters are not used
     _ = exitstatus
