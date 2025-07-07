@@ -228,7 +228,7 @@ def pytest_runtest_logreport(report):
         _plugin.record_test_failure(report.nodeid)
 
 
-def _get_brightest_data(session: Any) -> Dict[str, Any]:
+def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR0915
     """Collect brightest data for the JSON report."""
     brightest_data = {
         TIMESTAMP: datetime.now().isoformat(),
