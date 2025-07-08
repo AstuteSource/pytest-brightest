@@ -5,6 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from _pytest.config import Config  # type: ignore
+from _pytest.config.argparsing import Parser  # type: ignore
+from _pytest.main import Session  # type: ignore
+from _pytest.nodes import Item  # type: ignore
+from _pytest.reports import TestReport  # type: ignore
 from rich.console import Console
 
 from .constants import (
@@ -50,23 +55,26 @@ console = Console()
 class BrightestPlugin:
     """Main plugin class that handles pytest integration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the plugin with default settings."""
         self.enabled = False
         self.shuffle_enabled = False
-        self.shuffle_by = None
+        self.shuffle_by: Optional[str] = None
         self.seed: Optional[int] = None
         self.shuffler: Optional[ShufflerOfTests] = None
         self.details = False
         self.reorder_enabled = False
-        self.reorder_by = None
-        self.reorder = None
+        self.reorder_by: Optional[str] = None
+        self.reorder: Optional[str] = None
         self.reorderer: Optional[ReordererOfTests] = None
         self.brightest_json_file: Optional[str] = None
         self.current_session_failures: Dict[str, int] = {}
-        self.session_items: List[Any] = []
+        self.session_items: List[Item] = []
+        self.technique: Optional[str] = None
+        self.focus: Optional[str] = None
+        self.direction: Optional[str] = None
 
-    def configure(self, config) -> None:
+    def configure(self, config: Config) -> None:
         """Configure the plugin based on command-line options."""
         # check if the plugin is enabled; if it is not
         # enabled then no further configuration steps are taken
@@ -126,7 +134,7 @@ class BrightestPlugin:
                 self.current_session_failures[module_path] = 0
             self.current_session_failures[module_path] += 1
 
-    def shuffle_tests(self, items: List) -> None:
+    def shuffle_tests(self, items: List[Item]) -> None:
         """Shuffle test items if shuffling is enabled."""
         # if shuffling is enabled and there are items to shuffle, then
         # shuffle them according to the chosen focus
@@ -138,7 +146,7 @@ class BrightestPlugin:
             elif self.shuffle_by == MODULES_WITHIN_SUITE:
                 self.shuffler.shuffle_files_in_place(items)
 
-    def reorder_tests(self, items: List) -> None:
+    def reorder_tests(self, items: List[Item]) -> None:
         """Reorder test items if reordering is enabled."""
         # if reordering is enabled and there are items to reorder, then
         # reorder them according to the chosen technique, focus, and direction
@@ -148,12 +156,13 @@ class BrightestPlugin:
             and items
             and self.reorder_by
             and self.reorder
+            and self.focus
         ):
             self.reorderer.reorder_tests_in_place(
                 items, self.reorder_by, self.reorder, self.focus
             )
 
-    def store_session_items(self, items: List) -> None:
+    def store_session_items(self, items: List[Item]) -> None:
         """Store the session items for later use in data collection."""
         self.session_items = items.copy()
 
@@ -162,7 +171,7 @@ class BrightestPlugin:
 _plugin = BrightestPlugin()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: Parser) -> None:
     """Add command line options for pytest-brightest."""
     group = parser.getgroup("brightest")
     group.addoption(
@@ -201,13 +210,13 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config: Config) -> None:
     """Configure the plugin when pytest starts."""
     # configure the plugin using the command-line options
     _plugin.configure(config)
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Config, items: List[Item]) -> None:
     """Modify the collected test items by applying reordering and shuffling."""
     # indicate that config parameter is not used
     _ = config
@@ -223,15 +232,15 @@ def pytest_collection_modifyitems(config, items):
             _plugin.shuffle_tests(items)
 
 
-def pytest_runtest_logreport(report):
+def pytest_runtest_logreport(report: TestReport) -> None:
     """Capture test failures during the current session."""
     if _plugin.enabled and _plugin.technique == FAILURE and report.failed:
         _plugin.record_test_failure(report.nodeid)
 
 
-def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR0915
+def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, PLR0915
     """Collect brightest data for the JSON report."""
-    brightest_data = {
+    brightest_data: Dict[str, Any] = {
         TIMESTAMP: datetime.now().isoformat(),
         TECHNIQUE: _plugin.technique,
         FOCUS: _plugin.focus,
@@ -239,7 +248,12 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR09
         SEED: _plugin.seed,
     }
     # add prior data that was used for reordering this session
-    if _plugin.reorderer and _plugin.session_items:
+    if (
+        _plugin.reorderer
+        and _plugin.session_items
+        and _plugin.technique
+        and _plugin.focus
+    ):
         prior_data = _plugin.reorderer.get_prior_data_for_reordering(
             _plugin.session_items, _plugin.technique, _plugin.focus
         )
@@ -316,12 +330,12 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR09
     return brightest_data
 
 
-def pytest_sessionfinish(session, exitstatus):
+def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
     """Check if JSON file from pytest-json-report exists after test session completes."""
     # indicate that these parameters are not used
     _ = exitstatus
     # if the plugin is enabled and a JSON file is specified, then
-    # save the diagnostic data to the JSON file
+    # save the a diagnostic data to the JSON file
     if _plugin.enabled and _plugin.brightest_json_file:
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
