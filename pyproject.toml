@@ -78,3 +78,50 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+
+[tool.taskipy.variables]
+agents = "AGENTS.md"
+gemini = "GEMINI.md"
+readme = "README.md"
+plan = "docs/plan.md"
+project = "src/pytest_brightest"
+tests = "tests"
+check-command = { var = "ruff check {project} {tests}", recursive = true }
+coverage-test-command = "pytest -s --cov-context=test --cov-fail-under=30 --cov-report term-missing --cov-report json --cov --cov-branch"
+coverage-test-command-silent = "pytest -x --show-capture=no --cov-report term-missing --cov-report json --cov --cov-branch"
+developer-test-command = "pytest -x -s -vv"
+developer-test-command-no-property = "pytest -x -s -vv -m 'not property'"
+developer-test-command-not-random = "pytest -x -s -vv -p no:randomly"
+developer-test-silent-command = "pytest -x --show-capture=no"
+developer-test-silent-command-not-random = "pytest -x --show-capture=no -p no:randomly"
+fixformat-command = { var = "ruff format {project} {tests}", recursive = true }
+format-command = { var = "ruff format --check {project} {tests}", recursive = true }
+symbex-typed-command = {var = "symbex -s --untyped -d {project} --check", recursive = true}
+symbex-documented-command = {var = "symbex -s --undocumented -d {project} --check", recursive = true}
+mypy-command = {var = "mypy {project} {tests}", recursive = true}
+ty-command = {var = "ty check {project} {tests}", recursive = true}
+markdownlint-command = { var = "pymarkdown --config .pymarkdown.cfg scan {readme} {plan}", recursive = true }
+
+[tool.taskipy.tasks]
+all = "task lint && task test && task test-coverage"
+lint = "task format && task format && task check && task ty && task mypy && task symbex-typed && task symbex-documented && task markdownlint"
+check = { cmd = "{check-command}", help = "Run the ruff linting checks", use_vars = true }
+format = { cmd = "{format-command}", help = "Run the ruff formatter on source code", use_vars = true }
+format-fix = { cmd = "{fixformat-command}", help = "Run the ruff formatter to fix source code", use_vars = true }
+markdownlint = { cmd = "{markdownlint-command}", help = "Run the markdown linter on text files", use_vars = true }
+mypy = { cmd = "{mypy-command}", help = "Run the mypy type checker for potential type errors", use_vars = true }
+ty = { cmd = "{ty-command}", help = "Run the ty type checker for potential type errors", use_vars = true }
+symbex = "task symbex-typed && task symbex-documented"
+symbex-typed = { cmd = "{symbex-typed-command}", help = "Run symbex for fully typed functions", use_vars = true }
+symbex-documented = { cmd = "{symbex-documented-command}", help = "Run symbex for documentation", use_vars = true }
+test = { cmd = "{developer-test-command}", help = "Run the pytest test suite using order randomization", use_vars = true }
+test-not-property = { cmd = "{developer-test-command-no-property}", help = "Run the pytest test suite excluding property-based tests", use_vars = true }
+test-not-random = { cmd = "{developer-test-command-not-random}", help = "Run the pytest test suite without randomization", use_vars = true }
+test-silent = { cmd = "{developer-test-silent-command}", help = "Run the pytest test suite without showing output", use_vars = true }
+test-silent-not-random = { cmd = "{developer-test-silent-command-not-random}", help = "Run the pytest test suite without showing output", use_vars = true }
+test-coverage = { cmd = "{coverage-test-command}", help = "Run the pytest test suite with coverage monitoring", use_vars = true }
+test-coverage-silent = { cmd = "{coverage-test-command-silent}", help = "Run the pytest test suite with coverage monitoring without showing output", use_vars = true }
+
+[tool.mypy]
+ignore_missing_imports = true
+
