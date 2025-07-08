@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from rich.console import Console
 
@@ -42,6 +42,10 @@ from .constants import (
     UNKNOWN,
     ZERO_COST,
 )
+
+if TYPE_CHECKING:
+    from _pytest.nodes import Item  # type: ignore
+
 
 # create a default console
 console = Console()
@@ -125,7 +129,7 @@ class ReordererOfTests:
             # attempt to load any data from it and instead just return
             pass
 
-    def get_test_total_duration(self, item: Any) -> float:
+    def get_test_total_duration(self, item: "Item") -> float:
         """Get the total duration of a test item from previous run(s)."""
         # a pytest item has a nodeid attribute that uniquely identifies it
         node_id = getattr(item, NODEID, EMPTY_STRING)
@@ -134,7 +138,7 @@ class ReordererOfTests:
         # return the total duration of the test, or zero if it is not available
         return test_info.get(TOTAL_DURATION, ZERO_COST)
 
-    def get_test_outcome(self, item: Any) -> str:
+    def get_test_outcome(self, item: "Item") -> str:
         """Get the outcome of a test item from previous run(s)."""
         # a pytest item has a nodeid attribute that uniquely identifies it
         node_id = getattr(item, NODEID, EMPTY_STRING)
@@ -144,8 +148,8 @@ class ReordererOfTests:
         return test_info.get(OUTCOME, UNKNOWN)
 
     def classify_tests_by_outcome(
-        self, items: List[Any]
-    ) -> Tuple[List[Any], List[Any]]:
+        self, items: List["Item"]
+    ) -> Tuple[List["Item"], List["Item"]]:
         """Classify tests into passing and failing based on previous outcomes."""
         passing_tests = []
         failing_tests = []
@@ -160,8 +164,8 @@ class ReordererOfTests:
         return passing_tests, failing_tests
 
     def sort_tests_by_total_duration(
-        self, items: List[Any], ascending: bool = True
-    ) -> List[Any]:
+        self, items: List["Item"], ascending: bool = True
+    ) -> List["Item"]:
         """Sort tests by total duration in ascending or descending order."""
         # use the sorted function to sort the items by their total duration
         return sorted(
@@ -169,7 +173,7 @@ class ReordererOfTests:
         )
 
     def get_prior_data_for_reordering(  # noqa: PLR0912
-        self, items: List[Any], technique: str, focus: str
+        self, items: List["Item"], technique: str, focus: str
     ) -> Dict[str, Any]:
         """Get the prior data that was used for reordering during this session."""
         prior_data: Dict[str, Any] = {}
@@ -231,11 +235,11 @@ class ReordererOfTests:
         return prior_data
 
     def reorder_modules_by_cost(
-        self, items: List[Any], ascending: bool = True
+        self, items: List["Item"], ascending: bool = True
     ) -> None:
         """Reorder test modules by their cumulative cost."""
         module_costs: Dict[str, float] = {}
-        module_items: Dict[str, List[Any]] = {}
+        module_items: Dict[str, List["Item"]] = {}
         # iterate over each item and calculate the cumulative cost of each module
         for item in items:
             nodeid = getattr(item, NODEID, "")
@@ -270,10 +274,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_name(
-        self, items: List[Any], ascending: bool = True
+        self, items: List["Item"], ascending: bool = True
     ) -> None:
         """Reorder test modules by their name."""
-        module_items: Dict[str, List[Any]] = {}
+        module_items: Dict[str, List["Item"]] = {}
         # iterate over each item and group them by module
         for item in items:
             nodeid = getattr(item, NODEID, "")
@@ -299,11 +303,11 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_failure(
-        self, items: List[Any], ascending: bool = True
+        self, items: List["Item"], ascending: bool = True
     ) -> None:
         """Reorder test modules by their number of failing tests from previous runs."""
         module_failure_counts: Dict[str, int] = {}
-        module_items: Dict[str, List[Any]] = {}
+        module_items: Dict[str, List["Item"]] = {}
         # iterate over each item and group them by module
         for item in items:
             nodeid = getattr(item, NODEID, "")
@@ -339,10 +343,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_tests_within_module(
-        self, items: List[Any], reorder_by: str, ascending: bool = True
+        self, items: List["Item"], reorder_by: str, ascending: bool = True
     ) -> None:
         """Reorder tests within each module by the specified technique."""
-        module_items: Dict[str, List[Any]] = {}
+        module_items: Dict[str, List["Item"]] = {}
         module_order: List[str] = []
         # iterate over each item and group them by module
         for item in items:
@@ -385,7 +389,7 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_tests_in_place(
-        self, items: List[Any], reorder_by: str, reorder: str, focus: str
+        self, items: List["Item"], reorder_by: str, reorder: str, focus: str
     ) -> None:
         """Reorder tests in place based on the specified criteria."""
         # it is not possible to reorder an empty list of items
@@ -409,7 +413,7 @@ class ReordererOfTests:
             self.reorder_tests_across_modules(items, reorder_by, ascending)
 
     def reorder_tests_across_modules(
-        self, items: List[Any], reorder_by: str, ascending: bool = True
+        self, items: List["Item"], reorder_by: str, ascending: bool = True
     ) -> None:
         """Reorder tests across all modules by the specified technique."""
         if reorder_by == COST:
