@@ -22,15 +22,17 @@ class TestBrightestPlugin:
         plugin.configure(config)
         assert not plugin.enabled
 
-    def test_configure_enabled(self, mock_config):
+    def test_configure_enabled(self, mock_config, mocker):
         """Test that the plugin can be enabled."""
+        mocker.patch("pytest_brightest.plugin.console.print")
         plugin = BrightestPlugin()
         config = mock_config({"--brightest": True})
         plugin.configure(config)
         assert plugin.enabled
 
-    def test_configure_shuffle(self, mock_config):
+    def test_configure_shuffle(self, mock_config, mocker):
         """Test that the plugin can be configured to shuffle."""
+        mocker.patch("pytest_brightest.plugin.console.print")
         plugin = BrightestPlugin()
         config = mock_config(
             {
@@ -43,8 +45,9 @@ class TestBrightestPlugin:
         assert plugin.shuffle_enabled
         assert plugin.seed == 42
 
-    def test_configure_reorder(self, mock_config):
+    def test_configure_reorder(self, mock_config, mocker):
         """Test that the plugin can be configured to reorder."""
+        mocker.patch("pytest_brightest.plugin.console.print")
         plugin = BrightestPlugin()
         config = mock_config(
             {
@@ -58,8 +61,9 @@ class TestBrightestPlugin:
         assert plugin.reorder_by == "cost"
         assert plugin.reorder == "ascending"
 
-    def test_shuffle_tests(self, mock_config, mock_test_item):
+    def test_shuffle_tests(self, mock_config, mock_test_item, mocker):
         """Test that the plugin can shuffle tests."""
+        mocker.patch("pytest_brightest.plugin.console.print")
         plugin = BrightestPlugin()
         config = mock_config(
             {
@@ -77,8 +81,9 @@ class TestBrightestPlugin:
         plugin.shuffle_tests(items)
         assert [item.name for item in items] == ["two", "one", "three"]
 
-    def test_reorder_tests(self, tmp_path, mock_config, mock_test_item):
+    def test_reorder_tests(self, tmp_path, mock_config, mock_test_item, mocker):
         """Test that the plugin can reorder tests."""
+        mocker.patch("pytest_brightest.plugin.console.print")
         _ = tmp_path
         plugin = BrightestPlugin()
         config = mock_config(
