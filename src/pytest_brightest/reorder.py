@@ -168,11 +168,11 @@ class ReordererOfTests:
             items, key=self.get_test_total_duration, reverse=not ascending
         )
 
-    def get_prior_data_for_reordering(
+    def get_prior_data_for_reordering(  # noqa: PLR0912
         self, items: List[Any], technique: str, focus: str
     ) -> Dict[str, Any]:
         """Get the prior data that was used for reordering during this session."""
-        prior_data = {}
+        prior_data: Dict[str, Any] = {}
         if technique == COST:
             module_costs: Dict[str, float] = {}
             test_costs: Dict[str, float] = {}
@@ -181,7 +181,9 @@ class ReordererOfTests:
                 if nodeid:
                     cost = self.get_test_total_duration(item)
                     module_path = nodeid.split("::")[0]
-                    module_costs[module_path] = module_costs.get(module_path, 0.0) + cost
+                    module_costs[module_path] = (
+                        module_costs.get(module_path, 0.0) + cost
+                    )
                     test_costs[nodeid] = cost
             if focus == MODULES_WITHIN_SUITE:
                 prior_data[PRIOR_MODULE_COSTS] = module_costs
@@ -431,7 +433,9 @@ class ReordererOfTests:
         return bool(self.test_data)
 
 
-def create_reorderer(json_report_path: Optional[str] = None) -> ReordererOfTests:
+def create_reorderer(
+    json_report_path: Optional[str] = None,
+) -> ReordererOfTests:
     """Create a TestReorderer instance."""
     # create a TestReorderer instance that
     # can be used to reorder based on
