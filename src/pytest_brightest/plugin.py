@@ -111,6 +111,7 @@ class BrightestPlugin:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
+            console.print("This is the direction:" + str(self.direction))
             if json_setup_success and self.brightest_json_file:
                 self.reorderer = ReordererOfTests(self.brightest_json_file)
             console.print(
@@ -195,7 +196,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--reorder-in-direction",
         choices=[ASCENDING, DESCENDING],
-        default=None,
+        default=ASCENDING,
         help="Reordered tests in ascending or descending order",
     )
 
@@ -255,7 +256,9 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR09
             if nodeid:
                 cost = _plugin.reorderer.get_test_total_duration(item)
                 module_path = nodeid.split("::")[0]
-                current_module_costs[module_path] = current_module_costs.get(module_path, 0.0) + cost
+                current_module_costs[module_path] = (
+                    current_module_costs.get(module_path, 0.0) + cost
+                )
                 current_test_costs[nodeid] = cost
         if _plugin.focus == MODULES_WITHIN_SUITE:
             brightest_data[CURRENT_MODULE_COSTS] = current_module_costs
@@ -298,12 +301,18 @@ def _get_brightest_data(session: Any) -> Dict[str, Any]:  # noqa: PLR0912, PLR09
             brightest_data[CURRENT_MODULE_TESTS] = current_module_tests
             # maintain legacy key for backward compatibility
             brightest_data[MODULE_TESTS] = current_module_tests
-    elif _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE:
+    elif (
+        _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE
+    ):
         # save the current session failure counts for future use
         if _plugin.current_session_failures:
-            brightest_data[CURRENT_MODULE_FAILURE_COUNTS] = _plugin.current_session_failures
+            brightest_data[CURRENT_MODULE_FAILURE_COUNTS] = (
+                _plugin.current_session_failures
+            )
             # maintain legacy key for backward compatibility
-            brightest_data[MODULE_FAILURE_COUNTS] = _plugin.current_session_failures
+            brightest_data[MODULE_FAILURE_COUNTS] = (
+                _plugin.current_session_failures
+            )
     return brightest_data
 
 
