@@ -175,22 +175,21 @@ contiguous region of the file.
 acceptable and there is evidence that it works when installed through an
 editable install with uv in a project that uses Pytest and Pytest plugins, I
 want to refactor it in the following ways:
-
-- Make a command-line argument called `--reorder-by-technique`, with these options:
-    - `shuffle`: Shuffle the tests in a random order.
-    - `name`: Order the tests by their names.
-    - `cost`: Order the tests by their execution time.
-- Make a command-line argument called `--reorder-by-focus`, with these options:
-    - `modules-within-suite`: Reorder the modules (i.e., the files) in the test
-      suite, but do not actually change the order of the tests in the modules
-    - `tests-within-module`: Reorder the tests within each module, but do not
-      change the order of the modules in the test suite.
-    - `tests-across-modules`: Reorder the tests across all modules in the test suite,
-       mixing and matching tests from different modules into a complete new
-       order
-- Make a command-line argument called `--reorder-in-direction` with these options:
-    - `ascending`: Order the tests in ascending order.
-    - `descending`: Order the tests in descending order.
+    - Make a command-line argument called `--reorder-by-technique`, with these options:
+        - `shuffle`: Shuffle the tests in a random order.
+        - `name`: Order the tests by their names.
+        - `cost`: Order the tests by their execution time.
+    - Make a command-line argument called `--reorder-by-focus`, with these options:
+        - `modules-within-suite`: Reorder the modules (i.e., the files) in the test
+          suite, but do not actually change the order of the tests in the modules
+        - `tests-within-module`: Reorder the tests within each module, but do not
+          change the order of the modules in the test suite.
+        - `tests-across-modules`: Reorder the tests across all modules in the test suite,
+           mixing and matching tests from different modules into a complete new
+           order
+    - Make a command-line argument called `--reorder-in-direction` with these options:
+        - `ascending`: Order the tests in ascending order.
+        - `descending`: Order the tests in descending order.
 
 2) The idea is that the person using the pytest-brightest plugin should have the
 ability to pass these different command-line arguments to chose the technique by
