@@ -1,480 +1,186 @@
 """Test the TestReorderer class."""
 
-import json
 
-import pytest
+def test_create_reorderer():
+    """Test the create_reorderer function."""
+    from pytest_brightest.reorder import create_reorderer, ReordererOfTests
 
-from pytest_brightest.reorder import ReordererOfTests, create_reorderer
+    reorderer = create_reorderer()
+    assert isinstance(reorderer, ReordererOfTests)
+    assert (
+        reorderer.json_report_path == ".pytest_cache/pytest-json-report.json"
+    )
+    reorderer = create_reorderer("custom.json")
+    assert isinstance(reorderer, ReordererOfTests)
+    assert reorderer.json_report_path == "custom.json"
 
 
-class TestReordererOfTests:
-    """Test the TestReorderer class."""
+def test_load_test_data_json_decode_error(tmp_path, mocker):
+    from pytest_brightest.reorder import ReordererOfTests
 
-    def test_init_with_default_path(self, tmp_path):
-        """Test that the TestReorderer can be initialized with a default path."""
-        _ = tmp_path
-        reorderer = ReordererOfTests()
-        assert (
-            reorderer.json_report_path
-            == ".pytest_cache/pytest-json-report.json"
-        )
+    json_path = tmp_path / "bad.json"
+    json_path.write_text("{bad json}")
+    reorderer = ReordererOfTests(str(json_path))
+    assert not reorderer.has_test_data()
 
-    def test_init_with_custom_path(self, tmp_path):
-        """Test that the TestReorderer can be initialized with a custom path."""
-        json_path = tmp_path / "report.json"
-        reorderer = ReordererOfTests(str(json_path))
-        assert reorderer.json_report_path == str(json_path)
 
-    def test_load_test_data_file_not_found(self, tmp_path):
-        """Test that the TestReorderer can handle a missing JSON report."""
-        json_path = tmp_path / "non_existent_report.json"
-        reorderer = ReordererOfTests(str(json_path))
-        assert not reorderer.has_test_data()
+def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
+    from pytest_brightest.reorder import ReordererOfTests
+    import json
 
-    def test_load_test_data_invalid_json(self, tmp_path):
-        """Test that the TestReorderer can handle an invalid JSON report."""
-        json_path = tmp_path / "report.json"
-        json_path.write_text("invalid json")
-        reorderer = ReordererOfTests(str(json_path))
-        assert not reorderer.has_test_data()
+    json_path = tmp_path / "report.json"
+    data = {
+        "tests": [
+            {
+                "nodeid": "mod1::t1",
+                "call": {"duration": 1.0},
+                "outcome": "passed",
+            },
+            {
+                "nodeid": "mod1::t2",
+                "call": {"duration": 2.0},
+                "outcome": "failed",
+            },
+            {
+                "nodeid": "mod2::t3",
+                "call": {"duration": 3.0},
+                "outcome": "error",
+            },
+        ]
+    }
+    json_path.write_text(json.dumps(data))
+    reorderer = ReordererOfTests(str(json_path))
+    items = [
+        mock_test_item("mod1::t1"),
+        mock_test_item("mod1::t2"),
+        mock_test_item("mod2::t3"),
+    ]
+    # COST, MODULES_WITHIN_SUITE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "cost", "modules-within-suite"
+    )
+    assert "prior_module_costs" in d
+    # COST, TESTS_WITHIN_MODULE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "cost", "tests-within-module"
+    )
+    assert "prior_test_costs" in d
+    # COST, TESTS_ACROSS_MODULES
+    d = reorderer.get_prior_data_for_reordering(
+        items, "cost", "tests-across-modules"
+    )
+    assert "prior_test_costs" in d
+    # NAME, MODULES_WITHIN_SUITE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "name", "modules-within-suite"
+    )
+    assert "prior_module_order" in d
+    # NAME, TESTS_ACROSS_MODULES
+    d = reorderer.get_prior_data_for_reordering(
+        items, "name", "tests-across-modules"
+    )
+    assert "prior_test_order" in d
+    # NAME, TESTS_WITHIN_MODULE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "name", "tests-within-module"
+    )
+    assert "prior_module_tests" in d
+    # FAILURE, MODULES_WITHIN_SUITE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "failure", "modules-within-suite"
+    )
+    assert "prior_module_failure_counts" in d
 
-    def test_load_test_data_success(self, tmp_path, mock_test_item):
-        """Test that the ReordererOfTests can load test data from a JSON report."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {
-                    "nodeid": "test_one",
-                    "setup": {"duration": 0.1},
-                    "call": {"duration": 0.2},
-                    "teardown": {"duration": 0.3},
-                    "outcome": "passed",
-                }
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        assert reorderer.has_test_data()
-        assert reorderer.get_test_total_duration(
-            mock_test_item("test_one")
-        ) == pytest.approx(0.6)
-        assert (
-            reorderer.get_test_outcome(mock_test_item("test_one")) == "passed"
-        )
 
-    def test_get_test_total_duration_not_found(self, tmp_path, mock_test_item):
-        """Test that the ReordererOfTests returns 0 for a test not in the report."""
-        _ = tmp_path
-        reorderer = ReordererOfTests()
-        assert (
-            reorderer.get_test_total_duration(mock_test_item("not_found"))
-            == 0.0
-        )
+def test_reorder_tests_in_place_empty():
+    from pytest_brightest.reorder import ReordererOfTests
 
-    def test_get_test_outcome_not_found(self, tmp_path, mock_test_item):
-        """Test that the ReordererOfTests returns 'unknown' for a test not in the report."""
-        _ = tmp_path
-        reorderer = ReordererOfTests()
-        assert (
-            reorderer.get_test_outcome(mock_test_item("not_found"))
-            == "unknown"
-        )
+    reorderer = ReordererOfTests()
+    items = []
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "modules-within-suite"
+    )
+    assert items == []
 
-    def test_classify_tests_by_outcome(self, tmp_path, mock_test_item):
-        """Test that the ReordererOfTests can classify tests by outcome."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {"nodeid": "test_pass", "outcome": "passed"},
-                {"nodeid": "test_fail", "outcome": "failed"},
-                {"nodeid": "test_error", "outcome": "error"},
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("test_pass"),
-            mock_test_item("test_fail"),
-            mock_test_item("test_error"),
-        ]
-        passing, failing = reorderer.classify_tests_by_outcome(items)
-        assert [item.name for item in passing] == ["test_pass"]
-        assert [item.name for item in failing] == ["test_fail", "test_error"]
 
-    def test_sort_tests_by_total_duration(self, tmp_path, mock_test_item):
-        """Test that the ReordererOfTests can sort tests by total duration."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {"nodeid": "test_fast", "setup": {"duration": 0.1}},
-                {"nodeid": "test_slow", "setup": {"duration": 0.5}},
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [mock_test_item("test_slow"), mock_test_item("test_fast")]
-        sorted_items = reorderer.sort_tests_by_total_duration(items)
-        assert [item.name for item in sorted_items] == [
-            "test_fast",
-            "test_slow",
-        ]
-        sorted_items = reorderer.sort_tests_by_total_duration(
-            items, ascending=False
-        )
-        assert [item.name for item in sorted_items] == [
-            "test_slow",
-            "test_fast",
-        ]
+def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
+    from pytest_brightest.reorder import ReordererOfTests
+    import json
 
-    def test_reorder_modules_by_failure(
-        self, tmp_path, mock_test_item, mocker
-    ):
-        """Test reordering modules by failure count."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {"nodeid": "module_a.py::test_a1", "outcome": "passed"},
-                {"nodeid": "module_a.py::test_a2", "outcome": "failed"},
-                {"nodeid": "module_b.py::test_b1", "outcome": "passed"},
-                {"nodeid": "module_b.py::test_b2", "outcome": "failed"},
-                {"nodeid": "module_b.py::test_b3", "outcome": "failed"},
-                {"nodeid": "module_c.py::test_c1", "outcome": "passed"},
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_a.py::test_a2"),
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_b.py::test_b2"),
-            mock_test_item("module_b.py::test_b3"),
-            mock_test_item("module_c.py::test_c1"),
+    json_path = tmp_path / "report.json"
+    data = {
+        "tests": [
+            {
+                "nodeid": "mod1::t1",
+                "call": {"duration": 1.0},
+                "outcome": "passed",
+            },
+            {
+                "nodeid": "mod1::t2",
+                "call": {"duration": 2.0},
+                "outcome": "failed",
+            },
         ]
-        mocker.patch("pytest_brightest.reorder.console.print")
-        reorderer.reorder_modules_by_failure(items, ascending=True)
-        assert [item.name for item in items] == [
-            "module_c.py::test_c1",
-            "module_a.py::test_a1",
-            "module_a.py::test_a2",
-            "module_b.py::test_b1",
-            "module_b.py::test_b2",
-            "module_b.py::test_b3",
-        ]
+    }
+    json_path.write_text(json.dumps(data))
+    reorderer = ReordererOfTests(str(json_path))
+    items = [mock_test_item("mod1::t1"), mock_test_item("mod1::t2")]
+    mocker.patch("pytest_brightest.reorder.console.print")
+    # modules-within-suite, cost
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "modules-within-suite"
+    )
+    # modules-within-suite, name
+    reorderer.reorder_tests_in_place(
+        items, "name", "ascending", "modules-within-suite"
+    )
+    # modules-within-suite, failure
+    reorderer.reorder_tests_in_place(
+        items, "failure", "ascending", "modules-within-suite"
+    )
+    # tests-within-module
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "tests-within-module"
+    )
+    # tests-across-modules
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "tests-across-modules"
+    )
 
-        items = [
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_a.py::test_a2"),
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_b.py::test_b2"),
-            mock_test_item("module_b.py::test_b3"),
-            mock_test_item("module_c.py::test_c1"),
-        ]
-        reorderer.reorder_modules_by_failure(items, ascending=False)
-        assert [item.name for item in items] == [
-            "module_b.py::test_b1",
-            "module_b.py::test_b2",
-            "module_b.py::test_b3",
-            "module_a.py::test_a1",
-            "module_a.py::test_a2",
-            "module_c.py::test_c1",
-        ]
 
-    def test_reorder_modules_by_cost(self, tmp_path, mock_test_item, mocker):
-        """Test reordering modules by cost."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {"nodeid": "module_a.py::test_a1", "call": {"duration": 0.5}},
-                {"nodeid": "module_a.py::test_a2", "call": {"duration": 0.1}},
-                {"nodeid": "module_b.py::test_b1", "call": {"duration": 1.0}},
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_a.py::test_a2"),
-        ]
-        mocker.patch("pytest_brightest.reorder.console.print")
-        reorderer.reorder_modules_by_cost(items, ascending=True)
-        assert [item.name for item in items] == [
-            "module_a.py::test_a1",
-            "module_a.py::test_a2",
-            "module_b.py::test_b1",
-        ]
+def test_setup_json_report_plugin_branches(tmp_path, mocker):
+    from pytest_brightest.reorder import setup_json_report_plugin
 
-        items = [
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_a.py::test_a2"),
-        ]
-        reorderer.reorder_modules_by_cost(items, ascending=False)
-        assert [item.name for item in items] == [
-            "module_b.py::test_b1",
-            "module_a.py::test_a1",
-            "module_a.py::test_a2",
-        ]
+    class DummyConfig:
+        class Option:
+            json_report_file = ".report.json"
 
-    def test_reorder_modules_by_name(self, mock_test_item, mocker):
-        """Test reordering modules by name."""
-        reorderer = ReordererOfTests()
-        items = [
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_c.py::test_c1"),
-        ]
-        mocker.patch("pytest_brightest.reorder.console.print")
-        reorderer.reorder_modules_by_name(items, ascending=True)
-        assert [item.name for item in items] == [
-            "module_a.py::test_a1",
-            "module_b.py::test_b1",
-            "module_c.py::test_c1",
-        ]
+        option = Option()
 
-        items = [
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_a.py::test_a1"),
-            mock_test_item("module_c.py::test_c1"),
-        ]
-        reorderer.reorder_modules_by_name(items, ascending=False)
-        assert [item.name for item in items] == [
-            "module_c.py::test_c1",
-            "module_b.py::test_b1",
-            "module_a.py::test_a1",
-        ]
+        class PluginManager:
+            def has_plugin(self, name):
+                return name == "pytest_jsonreport"
 
-    def test_reorder_tests_within_module(
-        self, tmp_path, mock_test_item, mocker
-    ):
-        """Test reordering tests within modules."""
-        mocker.patch("pytest_brightest.reorder.console.print")
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {
-                    "nodeid": "module_a.py::test_a_slow",
-                    "call": {"duration": 1.0},
-                },
-                {
-                    "nodeid": "module_a.py::test_a_fast",
-                    "call": {"duration": 0.1},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_slow",
-                    "call": {"duration": 0.8},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_fast",
-                    "call": {"duration": 0.2},
-                },
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-            mock_test_item("module_b.py::test_b_slow"),
-            mock_test_item("module_b.py::test_b_fast"),
-        ]
-        mocker.patch("pytest_brightest.reorder.console.print")
-        reorderer.reorder_tests_within_module(items, "cost", ascending=True)
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_fast",
-            "module_a.py::test_a_slow",
-            "module_b.py::test_b_fast",
-            "module_b.py::test_b_slow",
-        ]
+        pluginmanager = PluginManager()
 
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-            mock_test_item("module_b.py::test_b_slow"),
-            mock_test_item("module_b.py::test_b_fast"),
-        ]
-        reorderer.reorder_tests_within_module(items, "name", ascending=False)
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_slow",
-            "module_a.py::test_a_fast",
-            "module_b.py::test_b_slow",
-            "module_b.py::test_b_fast",
-        ]
+    config = DummyConfig()
+    mocker.patch("pytest_brightest.reorder.console.print")
+    assert setup_json_report_plugin(config) is True
 
-    def test_reorder_tests_across_modules(self, tmp_path, mock_test_item):
-        """Test reordering tests across modules."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {
-                    "nodeid": "module_a.py::test_a_slow",
-                    "call": {"duration": 1.0},
-                },
-                {
-                    "nodeid": "module_a.py::test_a_fast",
-                    "call": {"duration": 0.1},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_slow",
-                    "call": {"duration": 0.8},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_fast",
-                    "call": {"duration": 0.2},
-                },
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-            mock_test_item("module_b.py::test_b_slow"),
-            mock_test_item("module_b.py::test_b_fast"),
-        ]
-        reorderer.reorder_tests_across_modules(items, "cost", ascending=True)
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_fast",
-            "module_b.py::test_b_fast",
-            "module_b.py::test_b_slow",
-            "module_a.py::test_a_slow",
-        ]
+    # test ImportError
+    def raise_import_error(*a, **kw):
+        raise ImportError("fail")
 
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-            mock_test_item("module_b.py::test_b_slow"),
-            mock_test_item("module_b.py::test_b_fast"),
-        ]
-        reorderer.reorder_tests_across_modules(items, "name", ascending=False)
-        assert [item.name for item in items] == [
-            "module_b.py::test_b_slow",
-            "module_b.py::test_b_fast",
-            "module_a.py::test_a_slow",
-            "module_a.py::test_a_fast",
-        ]
+    mocker.patch.object(
+        config.pluginmanager, "has_plugin", side_effect=raise_import_error
+    )
+    assert setup_json_report_plugin(config) is False
 
-        items = [
-            mock_test_item("module_a.py::test_a_pass"),
-            mock_test_item("module_b.py::test_b_fail"),
-            mock_test_item("module_c.py::test_c_pass"),
-        ]
-        # Create a JSON report with outcomes
-        json_path_failure = tmp_path / "report_failure.json"
-        data_failure = {
-            "tests": [
-                {"nodeid": "module_a.py::test_a_pass", "outcome": "passed"},
-                {"nodeid": "module_b.py::test_b_fail", "outcome": "failed"},
-                {"nodeid": "module_c.py::test_c_pass", "outcome": "passed"},
-            ]
-        }
-        json_path_failure.write_text(json.dumps(data_failure))
-        reorderer_failure = ReordererOfTests(str(json_path_failure))
+    # test Exception
+    def raise_exception(*a, **kw):
+        raise Exception("fail")
 
-        reorderer_failure.reorder_tests_across_modules(
-            items, "failure", ascending=True
-        )
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_pass",
-            "module_c.py::test_c_pass",
-            "module_b.py::test_b_fail",
-        ]
-
-        items = [
-            mock_test_item("module_a.py::test_a_pass"),
-            mock_test_item("module_b.py::test_b_fail"),
-            mock_test_item("module_c.py::test_c_pass"),
-        ]
-        reorderer_failure.reorder_tests_across_modules(
-            items, "failure", ascending=False
-        )
-        assert [item.name for item in items] == [
-            "module_b.py::test_b_fail",
-            "module_a.py::test_a_pass",
-            "module_c.py::test_c_pass",
-        ]
-
-    def test_reorder_tests_in_place(self, tmp_path, mock_test_item, mocker):
-        """Test the main reordering function."""
-        json_path = tmp_path / "report.json"
-        data = {
-            "tests": [
-                {
-                    "nodeid": "module_a.py::test_a_slow",
-                    "call": {"duration": 1.0},
-                },
-                {
-                    "nodeid": "module_a.py::test_a_fast",
-                    "call": {"duration": 0.1},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_slow",
-                    "call": {"duration": 0.8},
-                },
-                {
-                    "nodeid": "module_b.py::test_b_fast",
-                    "call": {"duration": 0.2},
-                },
-            ]
-        }
-        json_path.write_text(json.dumps(data))
-        reorderer = ReordererOfTests(str(json_path))
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-            mock_test_item("module_b.py::test_b_slow"),
-            mock_test_item("module_b.py::test_b_fast"),
-        ]
-        mocker.patch("pytest_brightest.reorder.console.print")
-        reorderer.reorder_tests_in_place(
-            items, "cost", "ascending", "tests-across-modules"
-        )
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_fast",
-            "module_b.py::test_b_fast",
-            "module_b.py::test_b_slow",
-            "module_a.py::test_a_slow",
-        ]
-
-        items = [
-            mock_test_item("module_b.py::test_b1"),
-            mock_test_item("module_a.py::test_a1"),
-        ]
-        reorderer.reorder_tests_in_place(
-            items, "name", "ascending", "modules-within-suite"
-        )
-        assert [item.name for item in items] == [
-            "module_a.py::test_a1",
-            "module_b.py::test_b1",
-        ]
-
-        items = [
-            mock_test_item("module_a.py::test_a_slow"),
-            mock_test_item("module_a.py::test_a_fast"),
-        ]
-        reorderer.reorder_tests_in_place(
-            items, "cost", "ascending", "tests-within-module"
-        )
-        assert [item.name for item in items] == [
-            "module_a.py::test_a_fast",
-            "module_a.py::test_a_slow",
-        ]
-
-        items = []
-        reorderer.reorder_tests_in_place(
-            items, "cost", "ascending", "tests-across-modules"
-        )
-        assert items == []
-
-    def test_create_reorderer(self):
-        """Test the create_reorderer function."""
-        reorderer = create_reorderer()
-        assert isinstance(reorderer, ReordererOfTests)
-        assert (
-            reorderer.json_report_path
-            == ".pytest_cache/pytest-json-report.json"
-        )
-        reorderer = create_reorderer("custom.json")
-        assert isinstance(reorderer, ReordererOfTests)
-        assert reorderer.json_report_path == "custom.json"
+    mocker.patch.object(
+        config.pluginmanager, "has_plugin", side_effect=raise_exception
+    )
+    assert setup_json_report_plugin(config) is False

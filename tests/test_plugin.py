@@ -146,6 +146,27 @@ class TestBrightestPlugin:
         )
 
 
+def test_brightestplugin_record_test_failure():
+    from pytest_brightest.plugin import BrightestPlugin
+
+    plugin = BrightestPlugin()
+    plugin.record_test_failure("mod1::test1")
+    assert plugin.current_session_failures["mod1"] == 1
+    plugin.record_test_failure("mod1::test1")
+    assert plugin.current_session_failures["mod1"] == 2
+    plugin.record_test_failure("")
+    # Should not raise
+
+
+def test_brightestplugin_store_session_items(mock_test_item):
+    from pytest_brightest.plugin import BrightestPlugin
+
+    plugin = BrightestPlugin()
+    items = [mock_test_item("a"), mock_test_item("b")]
+    plugin.store_session_items(items)
+    assert plugin.session_items == items
+
+
 class TestHooks:
     """A container for all the tests of the hooks."""
 
