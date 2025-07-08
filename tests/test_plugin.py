@@ -91,7 +91,7 @@ class TestBrightestPlugin:
         plugin.configure(config)
         items = [mock_test_item("slow"), mock_test_item("fast")]
         plugin.reorder_tests(items)
-        # This test is not complete as it requires a json file
+        # this test is not complete as it requires a json file
         assert [item.name for item in items] == ["slow", "fast"]
 
     def test_configure_shuffle_with_direction_warning(
@@ -137,7 +137,7 @@ class TestHooks:
         self, mocker, mock_config, mock_test_item
     ):
         """Test that pytest_collection_modifyitems modifies the items."""
-        # Mock the _plugin instance and its methods
+        # mock the _plugin instance and its methods
         mock_plugin = mocker.patch(
             "pytest_brightest.plugin._plugin", autospec=True
         )
@@ -196,20 +196,15 @@ class TestHooks:
         mocker.patch(
             "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
         )
-
-        # Mock _plugin.reorderer directly
+        # mock _plugin.reorderer directly
         mock_plugin.reorderer = mocker.MagicMock()
         mock_plugin.reorderer.get_test_total_duration.return_value = (
-            0.5  # Example return value
+            0.5  # example return value
         )
 
         mock_session = mocker.MagicMock()
         mock_session.items = []
-
-        from pytest_brightest.plugin import pytest_sessionfinish
-
         pytest_sessionfinish(mock_session, 0)
-
         mock_path_exists.assert_called_once_with()
         mock_json_load.assert_called_once_with(
             mock_file_handle.__enter__.return_value
@@ -237,8 +232,7 @@ class TestHooks:
             "module_b.py": 2,
             "module_c.py": 0,
         }
-
-        # Mock _plugin.reorderer directly
+        # mock _plugin.reorderer directly
         mock_plugin.reorderer = mocker.MagicMock()
         mock_plugin.reorderer.last_module_failure_counts = {
             "module_a.py": 1,
@@ -253,10 +247,7 @@ class TestHooks:
             "module_b.py::test_b3": "failed",
             "module_c.py::test_c1": "passed",
         }.get(item.nodeid, "passed")
-
-        mock_path_exists = mocker.patch(
-            "pathlib.Path.exists", return_value=True
-        )
+        mocker.patch("pathlib.Path.exists", return_value=True)
         mocker.patch("json.load", return_value={"tests": []})
         mock_json_dump = mocker.patch("json.dump")
         mocker.patch("pytest_brightest.plugin.console.print")
@@ -266,7 +257,6 @@ class TestHooks:
         mocker.patch(
             "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
         )
-
         mock_session = mocker.MagicMock()
         mock_session.items = [
             mock_test_item("module_a.py::test_a1", outcome="passed"),
@@ -276,11 +266,7 @@ class TestHooks:
             mock_test_item("module_b.py::test_b3", outcome="failed"),
             mock_test_item("module_c.py::test_c1", outcome="passed"),
         ]
-
-        from pytest_brightest.plugin import pytest_sessionfinish
-
         pytest_sessionfinish(mock_session, 0)
-
         mock_json_dump.assert_called_once()
         args, kwargs = mock_json_dump.call_args
         dumped_data = args[0]
