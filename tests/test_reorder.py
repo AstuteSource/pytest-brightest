@@ -249,6 +249,7 @@ class TestReordererOfTests:
         self, tmp_path, mock_test_item, mocker
     ):
         """Test reordering tests within modules."""
+        mocker.patch("pytest_brightest.reorder.console.print")
         json_path = tmp_path / "report.json"
         data = {
             "tests": [
