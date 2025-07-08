@@ -1,9 +1,12 @@
 """Test shuffling functionality for pytest-brightest."""
 
 import random
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from .constants import FSPATH, PATH, UNKNOWN
+
+if TYPE_CHECKING:
+    from _pytest.nodes import Item  # type: ignore
 
 
 class ShufflerOfTests:
@@ -16,7 +19,7 @@ class ShufflerOfTests:
         # is independent of the global random number generator
         self._random = random.Random(seed)
 
-    def shuffle_tests(self, items: List[Any]) -> List[Any]:
+    def shuffle_tests(self, items: List["Item"]) -> List["Item"]:
         """Shuffle a list of test items using the configured random seed."""
         # it is not possible to shuffle an empty list of items
         if not items:
@@ -38,20 +41,20 @@ class ShufflerOfTests:
         # is independent of the global random number generator
         self._random = random.Random(seed)
 
-    def shuffle_items_in_place(self, items: List[Any]) -> None:
+    def shuffle_items_in_place(self, items: List["Item"]) -> None:
         """Shuffle a list of items in place using the configured random seed."""
         # it is not possible to shuffle an empty list of items
         if items:
             # shuffle the list of items in place using the random number generator
             self._random.shuffle(items)
 
-    def shuffle_items_by_file_in_place(self, items: List[Any]) -> None:
+    def shuffle_items_by_file_in_place(self, items: List["Item"]) -> None:
         """Shuffle test items within each file while preserving file order."""
         # it is not possible to shuffle an empty list of items
         if not items:
             return
         # create a dictionary to group items by their file path
-        file_groups: Dict[str, List[Any]] = {}
+        file_groups: Dict[str, List["Item"]] = {}
         # create a list to maintain the order of the files
         file_order = []
         # iterate over each item and group it by its file path
@@ -80,13 +83,13 @@ class ShufflerOfTests:
             # add the shuffled items to the original list of items
             items.extend(file_items)
 
-    def shuffle_files_in_place(self, items: List[Any]) -> None:
+    def shuffle_files_in_place(self, items: List["Item"]) -> None:
         """Shuffle the order of files while preserving test order within each file."""
         # it is not possible to shuffle an empty list of items
         if not items:
             return
         # create a dictionary to group items by their file path
-        file_groups: Dict[str, List[Any]] = {}
+        file_groups: Dict[str, List["Item"]] = {}
         # create a list to maintain the order of the files
         file_order = []
         # iterate over each item and group it by its file path
