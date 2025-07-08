@@ -126,7 +126,9 @@ class TestReordererOfTests:
             "test_fast",
         ]
 
-    def test_reorder_modules_by_failure(self, tmp_path, mock_test_item, mocker):
+    def test_reorder_modules_by_failure(
+        self, tmp_path, mock_test_item, mocker
+    ):
         """Test reordering modules by failure count."""
         json_path = tmp_path / "report.json"
         data = {
