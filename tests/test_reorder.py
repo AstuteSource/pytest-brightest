@@ -165,7 +165,7 @@ def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
     )
 
 
-def test_setup_json_report_plugin_branches(tmp_path, mocker):
+def test_setup_json_report_plugin_branches(mocker):
     """Test setup_json_report_plugin for all branches and exceptions."""
 
     class DummyConfig:
@@ -185,7 +185,9 @@ def test_setup_json_report_plugin_branches(tmp_path, mocker):
     assert setup_json_report_plugin(config) is True
 
     # test ImportError
-    def raise_import_error(*a, **kw):
+    def raise_import_error(*args, **kwargs):
+        _ = args
+        _ = kwargs
         raise ImportError("fail")
 
     mocker.patch.object(
@@ -194,7 +196,9 @@ def test_setup_json_report_plugin_branches(tmp_path, mocker):
     assert setup_json_report_plugin(config) is False
 
     # test Exception
-    def raise_exception(*a, **kw):
+    def raise_exception(*args, **kwargs):
+        _ = args
+        _ = kwargs
         raise Exception("fail")
 
     mocker.patch.object(
