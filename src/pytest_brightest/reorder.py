@@ -19,6 +19,8 @@ from .constants import (
     ERROR,
     FAILED,
     FAILURE,
+    FLASHLIGHT_PREFIX,
+    HIGH_BRIGHTNESS_PREFIX,
     JSON_REPORT_FILE,
     MODULES_WITHIN_SUITE,
     NAME,
@@ -220,9 +222,9 @@ class ReordererOfTests:
             elif focus == TESTS_WITHIN_MODULE:
                 module_tests: Dict[str, List[str]] = {}
                 for item in items:
-                    nodeid = getattr(item, NODEID, "")
+                    nodeid = getattr(item, NODEID, NODEID_SEPARATOR)
                     if nodeid:
-                        module_path = nodeid.split("::")[0]
+                        module_path = nodeid.split(NODEID_SEPARATOR)[0]
                         if module_path not in module_tests:
                             module_tests[module_path] = []
                         module_tests[module_path].append(nodeid)
@@ -230,9 +232,9 @@ class ReordererOfTests:
         elif technique == FAILURE:
             module_failure_counts: Dict[str, int] = {}
             for item in items:
-                nodeid = getattr(item, NODEID, "")
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
-                    module_path = nodeid.split("::")[0]
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in module_failure_counts:
                         module_failure_counts[module_path] = 0
                     if self.get_test_outcome(item) in [FAILED, ERROR]:
@@ -249,13 +251,13 @@ class ReordererOfTests:
         module_items: Dict[str, List["Item"]] = {}
         # iterate over each item and calculate the cumulative cost of each module
         for item in items:
-            nodeid = getattr(item, NODEID, "")
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
                 # the module path is the part of the nodeid before the "::"
-                module_path = nodeid.split("::")[0]
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
                 cost = self.get_test_total_duration(item)
                 module_costs[module_path] = (
-                    module_costs.get(module_path, 0.0) + cost
+                    module_costs.get(module_path, ZERO_COST) + cost
                 )
                 if module_path not in module_items:
                     module_items[module_path] = []
@@ -287,9 +289,9 @@ class ReordererOfTests:
         module_items: Dict[str, List["Item"]] = {}
         # iterate over each item and group them by module
         for item in items:
-            nodeid = getattr(item, NODEID, "")
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
-                module_path = nodeid.split("::")[0]
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
@@ -303,7 +305,7 @@ class ReordererOfTests:
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
-                f":flashlight: pytest-brightest: Module {module} is in the reordered suite"
+                f"{FLASHLIGHT_PREFIX} Module {module} is in the reordered suite"
             )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
@@ -463,11 +465,11 @@ def setup_json_report_plugin(config) -> bool:
         plugin_manager = config.pluginmanager
         if plugin_manager.has_plugin(PYTEST_JSON_REPORT_PLUGIN_NAME):
             console.print(
-                ":flashlight: pytest-brightest: Detected the pytest-json-report plugin"
+                f"{FLASHLIGHT_PREFIX} Detected the pytest-json-report plugin"
             )
         else:
             console.print(
-                ":flashlight: pytest-brightest: Did not detect pytest-json-report plugin"
+                f"{FLASHLIGHT_PREFIX} Did not detect pytest-json-report plugin"
             )
         # configure the directory where the pytest-json-report plugin will
         # store its JSON report file used by pytest-brightest for certain
@@ -483,20 +485,20 @@ def setup_json_report_plugin(config) -> bool:
             and config.option.json_report_file == REPORT_JSON
         ):
             console.print(
-                f":flashlight: pytest-brightest: Not using the pytest-json-report in {config.option.json_report_file}"
+                f"{FLASHLIGHT_PREFIX} Not using the pytest-json-report in {config.option.json_report_file}"
             )
         # set the JSON report file location for pytest-json-report plugin
         # to be the default location that is used by the pytest-brightest plugin
         config.option.json_report_file = json_report_file
         console.print(
-            f":flashlight: pytest-brightest: Using the pytest-json-report with name {json_report_file}"
+            f"{FLASHLIGHT_PREFIX} Using the pytest-json-report with name {json_report_file}"
         )
         return True
     # was not able to import pytest_jsonreport's plugin which means that it cannot
     # be extract to support certain types of prioritization enabled by pytest-brightest
     except ImportError as e:
         console.print(
-            f":high_brightness: pytest-brightest: pytest-json-report not available: {e}"
+            f"{HIGH_BRIGHTNESS_PREFIX} pytest-brightest: pytest-json-report not available: {e}"
         )
         return False
     # some other problem occurred and the pytest-brightest plugin cannot use
