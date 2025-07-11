@@ -20,6 +20,7 @@ TESTS = "tests"
 FSPATH = "fspath"
 PATH = "path"
 NODEID = "nodeid"
+NODEID_SEPARATOR = "::"
 
 # define constants for test outcomes
 TOTAL_DURATION = "total_duration"
@@ -28,6 +29,8 @@ UNKNOWN = "unknown"
 SETUP_DURATION = "setup_duration"
 CALL_DURATION = "call_duration"
 TEARDOWN_DURATION = "teardown_duration"
+FAILED = "failed"
+ERROR = "error"
 
 # define constants for json report
 JSON_REPORT_FILE = "json_report_file"
