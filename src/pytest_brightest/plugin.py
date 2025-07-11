@@ -119,7 +119,6 @@ class BrightestPlugin:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
-            console.print("This is the direction:" + str(self.direction))
             if json_setup_success and self.brightest_json_file:
                 self.reorderer = ReordererOfTests(self.brightest_json_file)
             console.print(
