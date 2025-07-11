@@ -43,24 +43,27 @@ and high-quality contributions.
 All the Python code should follow these standards:
 
 - **Function bodies:** No blank lines within function bodies - keep code
-  contiguous.
+contiguous.
 - **Docstrings:** Single-line docstrings starting with a capital letter, ending
-  with a period.
+with a period.
 - **Comments:** Other comments start with a lowercase letter; preserve existing
-  comments during refactoring.
+comments during refactoring.
 - **Imports:** Group imports in this order: standard library, third-party, local
-  imports. Use absolute imports (`from pytest_brightest.module import`).
+imports. Use absolute imports (`from pytest_brightest.module import`). Finally,
+make sure that all imports are placed at the top of the file. Do not place
+imports into the middle of a file or even at the start of a function or class.
 - **Formatting:** Use `ruff format` (line length 79 for lint, 88 for `isort`);
-  trailing commas enabled.
-- **Types:** All functions must have type hints for parameters and return values.
+trailing commas enabled.
+- **Types:** All functions must have type hints for parameters and return
+values.
 - **Naming:** snake_case for functions/variables, PascalCase for classes,
-  UPPER_SNAKE_CASE for constants.
+UPPER_SNAKE_CASE for constants.
 - **File operations:** Use `pathlib.Path` for all file system operations, never
-  string paths.
+string paths.
 - **Error handling:** Use specific exceptions, not generic `Exception`; provide
-  meaningful error messages.
+meaningful error messages.
 - **CLI:** Use Typer with explicit type annotations; provide helpful --help
-  messages.
+messages.
 
 ## Project Structure Requirements
 
