@@ -127,6 +127,7 @@ class ReordererOfTests:
                                 CALL_DURATION: call_duration,
                                 TEARDOWN_DURATION: teardown_duration,
                             }
+        # something went wrong while reading the JSON file
         except (json.JSONDecodeError, KeyError, OSError):
             # if there is an error reading the JSON file, then do not
             # attempt to load any data from it and instead just return
