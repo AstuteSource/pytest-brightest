@@ -183,16 +183,13 @@ def test_setup_json_report_plugin_branches(tmp_path, mocker):
     config = DummyConfig()
     mocker.patch("pytest_brightest.reorder.console.print")
     assert setup_json_report_plugin(config) is True
-
     # test ImportError
     def raise_import_error(*a, **kw):
         raise ImportError("fail")
-
     mocker.patch.object(
         config.pluginmanager, "has_plugin", side_effect=raise_import_error
     )
     assert setup_json_report_plugin(config) is False
-
     # test Exception
     def raise_exception(*a, **kw):
         raise Exception("fail")
