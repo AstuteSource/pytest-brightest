@@ -84,3 +84,7 @@ CURRENT_MODULE_FAILURE_COUNTS = "current_module_failure_counts"
 CURRENT_MODULE_ORDER = "current_module_order"
 CURRENT_TEST_ORDER = "current_test_order"
 CURRENT_MODULE_TESTS = "current_module_tests"
+
+# diagnostic message prefixes
+FLASHLIGHT_PREFIX = ":flashlight: pytest-brightest:"
+HIGH_BRIGHTNESS_PREFIX = ":high_brightness: pytest-brightest:"
