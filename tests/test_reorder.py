@@ -1,10 +1,16 @@
 """Test the TestReorderer class."""
 
+import json
+
+from pytest_brightest.reorder import (
+    ReordererOfTests,
+    create_reorderer,
+    setup_json_report_plugin,
+)
+
 
 def test_create_reorderer():
     """Test the create_reorderer function."""
-    from pytest_brightest.reorder import create_reorderer, ReordererOfTests
-
     reorderer = create_reorderer()
     assert isinstance(reorderer, ReordererOfTests)
     assert (
@@ -16,8 +22,7 @@ def test_create_reorderer():
 
 
 def test_load_test_data_json_decode_error(tmp_path, mocker):
-    from pytest_brightest.reorder import ReordererOfTests
-
+    """Test loading test data with JSON decode error."""
     json_path = tmp_path / "bad.json"
     json_path.write_text("{bad json}")
     reorderer = ReordererOfTests(str(json_path))
@@ -25,9 +30,7 @@ def test_load_test_data_json_decode_error(tmp_path, mocker):
 
 
 def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
-    from pytest_brightest.reorder import ReordererOfTests
-    import json
-
+    """Test getting prior data for all reordering branches."""
     json_path = tmp_path / "report.json"
     data = {
         "tests": [
@@ -93,8 +96,7 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
 
 
 def test_reorder_tests_in_place_empty():
-    from pytest_brightest.reorder import ReordererOfTests
-
+    """Test reordering with empty items list."""
     reorderer = ReordererOfTests()
     items = []
     reorderer.reorder_tests_in_place(
@@ -104,9 +106,7 @@ def test_reorder_tests_in_place_empty():
 
 
 def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
-    from pytest_brightest.reorder import ReordererOfTests
-    import json
-
+    """Test reordering tests in place for all branches."""
     json_path = tmp_path / "report.json"
     data = {
         "tests": [
@@ -147,9 +147,26 @@ def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
         items, "cost", "ascending", "tests-across-modules"
     )
 
+    # modules-within-suite, name
+    reorderer.reorder_tests_in_place(
+        items, "name", "ascending", "modules-within-suite"
+    )
+    # modules-within-suite, failure
+    reorderer.reorder_tests_in_place(
+        items, "failure", "ascending", "modules-within-suite"
+    )
+    # tests-within-module
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "tests-within-module"
+    )
+    # tests-across-modules
+    reorderer.reorder_tests_in_place(
+        items, "cost", "ascending", "tests-across-modules"
+    )
+
 
 def test_setup_json_report_plugin_branches(tmp_path, mocker):
-    from pytest_brightest.reorder import setup_json_report_plugin
+    """Test setup_json_report_plugin for all branches and exceptions."""
 
     class DummyConfig:
         class Option:
