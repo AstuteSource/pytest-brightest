@@ -258,7 +258,7 @@ def test_shuffle_items_by_file_in_place_path_fallback():
     assert sorted([item.name for item in items]) == ["a", "b"]
 
 
-def test_shuffle_files_in_place_path_fallback(mock_test_item):
+def test_shuffle_files_in_place_path_fallback():
     """Test shuffle_files_in_place fallback to PATH/UNKNOWN."""
 
     class Dummy:
