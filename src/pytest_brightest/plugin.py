@@ -335,7 +335,7 @@ def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
     # indicate that these parameters are not used
     _ = exitstatus
     # if the plugin is enabled and a JSON file is specified, then
-    # save the a diagnostic data to the JSON file
+    # save the diagnostic data to the JSON file
     if _plugin.enabled and _plugin.brightest_json_file:
         json_file = Path(_plugin.brightest_json_file)
         if json_file.exists():
