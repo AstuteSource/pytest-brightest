@@ -73,7 +73,10 @@ class ReordererOfTests:
 
     def load_test_data(self) -> None:
         """Load test execution data from the pytest-json-report report file."""
-        # create a pathlib Path object for the JSON report file
+        # create a pathlib Path object for the JSON report file; remember
+        # that pytest-brightest does not have its own mechanism for collecting
+        # data about test execution as it instead relies on the pytest-json-report
+        # plugin to generate a JSON report file that contains the test data
         report_path = Path(self.json_report_path)
         # if the report does not exist in the default location then
         # the data from it cannot be extracted and thus the loading
