@@ -50,7 +50,7 @@ All the Python code should follow these standards:
   comments during refactoring.
 - **Imports:** Group imports in this order: standard library, third-party, local
   imports. Use absolute imports (`from pytest_brightest.module import`).
-- **Formatting:** Use `ruff format` (line length 79 for lint, 88 for isort);
+- **Formatting:** Use `ruff format` (line length 79 for lint, 88 for `isort`);
   trailing commas enabled.
 - **Types:** All functions must have type hints for parameters and return values.
 - **Naming:** snake_case for functions/variables, PascalCase for classes,
@@ -61,7 +61,6 @@ All the Python code should follow these standards:
   meaningful error messages.
 - **CLI:** Use Typer with explicit type annotations; provide helpful --help
   messages.
-- **GitHub API:** Prefer PyGitHub unless requests library is more appropriate.
 
 ## Project Structure Requirements
 
