@@ -147,8 +147,7 @@ class TestBrightestPlugin:
 
 
 def test_brightestplugin_record_test_failure():
-    from pytest_brightest.plugin import BrightestPlugin
-
+    """Test recording test failures in BrightestPlugin."""
     plugin = BrightestPlugin()
     plugin.record_test_failure("mod1::test1")
     assert plugin.current_session_failures["mod1"] == 1
@@ -159,8 +158,7 @@ def test_brightestplugin_record_test_failure():
 
 
 def test_brightestplugin_store_session_items(mock_test_item):
-    from pytest_brightest.plugin import BrightestPlugin
-
+    """Test storing session items in BrightestPlugin."""
     plugin = BrightestPlugin()
     items = [mock_test_item("a"), mock_test_item("b")]
     plugin.store_session_items(items)
@@ -271,6 +269,7 @@ class TestHooks:
         self, mocker, mock_config, tmp_path, mock_test_item
     ):
         """Test that pytest_sessionfinish saves module failure counts for failure reordering."""
+        _ = mock_config
         mock_plugin = mocker.patch(
             "pytest_brightest.plugin._plugin", autospec=True
         )
@@ -321,6 +320,7 @@ class TestHooks:
         pytest_sessionfinish(mock_session, 0)
         mock_json_dump.assert_called_once()
         args, kwargs = mock_json_dump.call_args
+        _ = kwargs
         dumped_data = args[0]
         assert dumped_data["brightest"]["module_failure_counts"] == {
             "module_a.py": 1,
