@@ -4,6 +4,8 @@ This document provides guidelines for AI agents contributing to this repository.
 For more detailed instructions, especially for Gemini agents, please refer to
 `GEMINI.md`.
 
+## Overview of Instructions
+
 - **Always use `uv`:** This project uses `uv` for all dependency management,
   virtual environments, and task running. Do not use `pip` or `venv` directly.
 - **Follow all guidelines:** This document contains the complete set of
@@ -19,6 +21,15 @@ For more detailed instructions, especially for Gemini agents, please refer to
   to review your work and catch errors early.
 - **Communicate clearly:** When you propose changes, explain what you've done
   and why.
+
+## Notification Instructions
+
+- The user has given permission to use the `notify-send` command to signal task
+completion. Here is an example of the command: `notify-send "Queston from
+Coding Agent" "Please clarify how to complete the testing task."`.
+- The user wants a `notify-send` notification whenever I ask a question.
+- Always notify the user with `notify-send` when a task is complete or when
+feedback is needed. I have standing permission to use the notification tool.
 
 ## Build, Lint, and Test Commands
 
@@ -41,13 +52,15 @@ For more detailed instructions, especially for Gemini agents, please refer to
 All the Python code should follow these standards:
 
 - **Function bodies:** No blank lines within function bodies - keep code
-  contiguous.
+contiguous.
 - **Docstrings:** Single-line docstrings starting with a capital letter, ending
-  with a period.
+with a period.
 - **Comments:** Other comments start with a lowercase letter; preserve existing
-  comments during refactoring.
+comments during refactoring.
 - **Imports:** Group imports in this order: standard library, third-party, local
-  imports. Use absolute imports (`from pytest_brightest.module import`).
+imports. Use absolute imports (`from pytest_brightest.module import`). Finally,
+make sure that all imports are placed at the top of the file. Do not place
+imports into the middle of a file or even at the start of a function or class.
 - **Formatting:** Use `ruff format` (line length 79 for lint, 88 for isort);
   trailing commas enabled.
 - **Types:** All functions must have type hints for parameters and return values.
@@ -57,9 +70,6 @@ All the Python code should follow these standards:
   string paths.
 - **Error handling:** Use specific exceptions, not generic `Exception`; provide
   meaningful error messages.
-- **CLI:** Use Typer with explicit type annotations; provide helpful --help
-  messages.
-- **GitHub API:** Prefer PyGitHub unless requests library is more appropriate.
 
 ## Project Structure Requirements
 
