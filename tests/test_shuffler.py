@@ -42,7 +42,7 @@ def test_get_set_seed():
     s = ShufflerOfTests()
     assert s.get_seed() is None
     s.set_seed(99)
-    assert s.get_seed() == 99
+    assert s.get_seed() == 99  # noqa: PLR2004
     s.set_seed(None)
     assert s.get_seed() is None
 
@@ -126,94 +126,100 @@ def test_generate_random_seed_range():
         seed = generate_random_seed()
         assert 1 <= seed <= 2**31 - 1
 
-    def test_shuffle_items_in_place(self, mock_test_item):
-        """Test that the shuffler can shuffle items in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = [
-            mock_test_item("one"),
-            mock_test_item("two"),
-            mock_test_item("three"),
-        ]
-        shuffler.shuffle_items_in_place(items)
-        assert [item.name for item in items] == ["two", "one", "three"]
 
-    def test_shuffle_items_by_file_in_place_empty_list(self):
-        """Test that the shuffler can shuffle an empty list by file in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = []
-        shuffler.shuffle_items_by_file_in_place(items)
-        assert items == []
+def test_shuffle_items_in_place(mock_test_item):
+    """Test that the shuffler can shuffle items in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = [
+        mock_test_item("one"),
+        mock_test_item("two"),
+        mock_test_item("three"),
+    ]
+    shuffler.shuffle_items_in_place(items)
+    assert [item.name for item in items] == ["two", "one", "three"]
 
-    def test_shuffle_items_by_file_in_place_single_file(self, mock_test_item):
-        """Test that the shuffler can shuffle a single file by file in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = [
-            mock_test_item("file1_test1"),
-            mock_test_item("file1_test2"),
-        ]
-        for item in items:
+
+def test_shuffle_items_by_file_in_place_empty_list():
+    """Test that the shuffler can shuffle an empty list by file in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = []
+    shuffler.shuffle_items_by_file_in_place(items)
+    assert items == []
+
+
+def test_shuffle_items_by_file_in_place_single_file(mock_test_item):
+    """Test that the shuffler can shuffle a single file by file in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = [
+        mock_test_item("file1_test1"),
+        mock_test_item("file1_test2"),
+    ]
+    for item in items:
+        item.fspath = "/path/to/file1.py"
+    shuffler.shuffle_items_by_file_in_place(items)
+    assert [item.name for item in items] == ["file1_test2", "file1_test1"]
+
+
+def test_shuffle_items_by_file_in_place(mock_test_item):
+    """Test that the shuffler can shuffle items by file in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = [
+        mock_test_item("file1_test1"),
+        mock_test_item("file1_test2"),
+        mock_test_item("file2_test1"),
+        mock_test_item("file2_test2"),
+    ]
+    # mock the fspath attribute
+    for item in items:
+        if "file1" in item.name:
             item.fspath = "/path/to/file1.py"
-        shuffler.shuffle_items_by_file_in_place(items)
-        assert [item.name for item in items] == ["file1_test2", "file1_test1"]
+        else:
+            item.fspath = "/path/to/file2.py"
+    shuffler.shuffle_items_by_file_in_place(items)
+    assert [item.name for item in items] == [
+        "file1_test2",
+        "file1_test1",
+        "file2_test2",
+        "file2_test1",
+    ]
 
-    def test_shuffle_items_by_file_in_place(self, mock_test_item):
-        """Test that the shuffler can shuffle items by file in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = [
-            mock_test_item("file1_test1"),
-            mock_test_item("file1_test2"),
-            mock_test_item("file2_test1"),
-            mock_test_item("file2_test2"),
-        ]
-        # mock the fspath attribute
-        for item in items:
-            if "file1" in item.name:
-                item.fspath = "/path/to/file1.py"
-            else:
-                item.fspath = "/path/to/file2.py"
 
-        shuffler.shuffle_items_by_file_in_place(items)
-        assert [item.name for item in items] == [
-            "file1_test2",
-            "file1_test1",
-            "file2_test2",
-            "file2_test1",
-        ]
+def test_shuffle_files_in_place_empty_list():
+    """Test that the shuffler can shuffle an empty list of files in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = []
+    shuffler.shuffle_files_in_place(items)
+    assert items == []
 
-    def test_shuffle_files_in_place_empty_list(self):
-        """Test that the shuffler can shuffle an empty list of files in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = []
-        shuffler.shuffle_files_in_place(items)
-        assert items == []
 
-    def test_shuffle_files_in_place_single_file(self, mock_test_item):
-        """Test that the shuffler can shuffle a single file in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = [
-            mock_test_item("file1_test1"),
-            mock_test_item("file1_test2"),
-        ]
-        for item in items:
+def test_shuffle_files_in_place_single_file(mock_test_item):
+    """Test that the shuffler can shuffle a single file in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = [
+        mock_test_item("file1_test1"),
+        mock_test_item("file1_test2"),
+    ]
+    for item in items:
+        item.fspath = "/path/to/file1.py"
+    shuffler.shuffle_files_in_place(items)
+    assert [item.name for item in items] == ["file1_test1", "file1_test2"]
+
+
+def test_shuffle_files_in_place(mock_test_item):
+    """Test that the shuffler can shuffle files in place."""
+    shuffler = ShufflerOfTests(seed=42)
+    items = [
+        mock_test_item("file1_test1"),
+        mock_test_item("file1_test2"),
+        mock_test_item("file2_test1"),
+        mock_test_item("file2_test2"),
+    ]
+    # mock the fspath attribute
+    for item in items:
+        if "file1" in item.name:
             item.fspath = "/path/to/file1.py"
-        shuffler.shuffle_files_in_place(items)
-        assert [item.name for item in items] == ["file1_test1", "file1_test2"]
-
-    def test_shuffle_files_in_place(self, mock_test_item):
-        """Test that the shuffler can shuffle files in place."""
-        shuffler = ShufflerOfTests(seed=42)
-        items = [
-            mock_test_item("file1_test1"),
-            mock_test_item("file1_test2"),
-            mock_test_item("file2_test1"),
-            mock_test_item("file2_test2"),
-        ]
-        # Mock the fspath attribute
-        for item in items:
-            if "file1" in item.name:
-                item.fspath = "/path/to/file1.py"
-            else:
-                item.fspath = "/path/to/file2.py"
+        else:
+            item.fspath = "/path/to/file2.py"
 
         shuffler.shuffle_files_in_place(items)
         assert [item.name for item in items] == [
@@ -239,7 +245,7 @@ def test_generate_random_seed():
     assert 1 <= seed <= 2**31 - 1
 
 
-def test_shuffle_items_by_file_in_place_path_fallback(mock_test_item):
+def test_shuffle_items_by_file_in_place_path_fallback():
     """Test shuffle_items_by_file_in_place fallback to PATH/UNKNOWN."""
 
     class Dummy:
