@@ -21,7 +21,7 @@ def test_create_reorderer():
     assert reorderer.json_report_path == "custom.json"
 
 
-def test_load_test_data_json_decode_error(tmp_path, mocker):
+def test_load_test_data_json_decode_error(tmp_path):
     """Test loading test data with JSON decode error."""
     json_path = tmp_path / "bad.json"
     json_path.write_text("{bad json}")
