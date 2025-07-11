@@ -16,11 +16,14 @@ from .constants import (
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DURATION,
     EMPTY_STRING,
+    ERROR,
+    FAILED,
     FAILURE,
     JSON_REPORT_FILE,
     MODULES_WITHIN_SUITE,
     NAME,
     NODEID,
+    NODEID_SEPARATOR,
     OUTCOME,
     PRIOR_MODULE_COSTS,
     PRIOR_MODULE_FAILURE_COUNTS,
@@ -161,7 +164,7 @@ class ReordererOfTests:
         for item in items:
             outcome = self.get_test_outcome(item)
             # the outcome is a string that can be "passed", "failed", or "error"
-            if outcome in ["failed", "error"]:
+            if outcome in [FAILED, ERROR]:
                 failing_tests.append(item)
             else:
                 passing_tests.append(item)
@@ -185,10 +188,10 @@ class ReordererOfTests:
             module_costs: Dict[str, float] = {}
             test_costs: Dict[str, float] = {}
             for item in items:
-                nodeid = getattr(item, NODEID, "")
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     cost = self.get_test_total_duration(item)
-                    module_path = nodeid.split("::")[0]
+                    module_path = nodeid.split(NODEID)[0]
                     module_costs[module_path] = (
                         module_costs.get(module_path, 0.0) + cost
                     )
@@ -232,7 +235,7 @@ class ReordererOfTests:
                     module_path = nodeid.split("::")[0]
                     if module_path not in module_failure_counts:
                         module_failure_counts[module_path] = 0
-                    if self.get_test_outcome(item) in ["failed", "error"]:
+                    if self.get_test_outcome(item) in [FAILED, ERROR]:
                         module_failure_counts[module_path] += 1
             if focus == MODULES_WITHIN_SUITE:
                 prior_data[PRIOR_MODULE_FAILURE_COUNTS] = module_failure_counts
@@ -321,7 +324,7 @@ class ReordererOfTests:
                     module_failure_counts[module_path] = 0
                     module_items[module_path] = []
                 # get the test outcome from previous run data
-                if self.get_test_outcome(item) in ["failed", "error"]:
+                if self.get_test_outcome(item) in [FAILED, ERROR]:
                     module_failure_counts[module_path] += 1
                 module_items[module_path].append(item)
         # store the failure counts for potential use in reporting
@@ -424,7 +427,7 @@ class ReordererOfTests:
             items.sort(key=self.get_test_total_duration, reverse=not ascending)
         elif reorder_by == NAME:
             items.sort(
-                key=lambda item: getattr(item, "name", ""),
+                key=lambda item: getattr(item, NAME, EMPTY_STRING),
                 reverse=not ascending,
             )
         elif reorder_by == FAILURE:
