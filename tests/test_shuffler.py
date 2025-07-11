@@ -220,14 +220,13 @@ def test_shuffle_files_in_place(mock_test_item):
             item.fspath = "/path/to/file1.py"
         else:
             item.fspath = "/path/to/file2.py"
-
-        shuffler.shuffle_files_in_place(items)
-        assert [item.name for item in items] == [
-            "file2_test1",
-            "file2_test2",
-            "file1_test1",
-            "file1_test2",
-        ]
+    shuffler.shuffle_files_in_place(items)
+    assert [item.name for item in items] == [
+        "file2_test1",
+        "file2_test2",
+        "file1_test1",
+        "file1_test2",
+    ]
 
 
 def test_create_shuffler():
