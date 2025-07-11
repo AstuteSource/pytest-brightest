@@ -22,6 +22,16 @@ and high-quality contributions.
 - **Communicate clearly:** When you propose changes, explain what you've done
   and why.
 
+As a Gemini agent, you must also follow these behavior guidelines, especially
+when it comes to notifying the programmer about your work and status:
+
+- The user has given permission to use the `notify-send` command to signal task
+completion. Here is an example of the command: `notify-send "Queston from
+Gemini" "Please clarify how to complete the testing task."`.
+- The user wants a `notify-send` notification whenever I ask a question.
+- Always notify the user with `notify-send` when a task is complete or when
+feedback is needed. I have standing permission to use the notification tool.
+
 ## Build, Lint, and Test Commands
 
 - **Install dependencies:** `uv sync --dev`
