@@ -1,4 +1,4 @@
-"""Test reordering functionality based on previous test performance."""
+"""Test reordering functionality based on previous test behavior."""
 
 import json
 from pathlib import Path
