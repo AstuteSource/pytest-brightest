@@ -277,7 +277,9 @@ class ReordererOfTests:
         for module in sorted_modules:
             # print out the cost of the module using no more than 5 fixed
             # decimal places for the execution time of the test case
-            console.print(f"{FLASHLIGHT_PREFIX} Module {module} has cost {module_costs[module]:.5f}")
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} has cost {module_costs[module]:.5f}"
+            )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
         items[:] = reordered_items
