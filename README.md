@@ -1,128 +1,118 @@
 # pytest-brightest
 
 [![Build](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml/badge.svg)](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml)
-[![Maintenance](https://img.shields.io/badge/maintained%3F-Yes-blue.svg)](https://github.com/gkapfham/chasten/graphs/commit-activity)
+[![Maintenance](https://img.shields.io/badge/maintained%3F-Yes-blue.svg)](https://github.com/AstuteSource/pytest-brightest/graphs/commit-activity)
 [![License LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
-Welcome, fellow developers and scholars of the digital age! I'm [Gregory M.
-Kapfhammer](https://www.gregorykapfhammer.com/), and I'm thrilled to introduce
-you to `pytest-brightest`, a `pytest` plugin designed to illuminate your testing
-process. As a professor, researcher, and open-source enthusiast, I've always
-been fascinated by the intersection of scientific principles and practical
-software development. This plugin is a direct result of that passion, bringing
-insights from software testing research right into your command line.
+A `pytest` plugin for intelligent test suite execution through reordering and shuffling, inspired by software testing research.
 
-## :smile: Perspectives
+## 📖 Table of Contents
 
-RepoRover is a tool that automatically manages and analyzes multiple GitHub
-repositories within a GitHub organization. Here are three different perspectives
-that people may have about the tool!
+- [✨ Perspectives](#-perspectives)
+- [🚀 Why `pytest-brightest`?](#-why-pytest-brightest)
+- [📋 Requirements](#-requirements)
+- [🛠️ Modes of Operation](#️-modes-of-operation)
+  - [Reordering](#reordering)
+  - [Shuffling](#shuffling)
+- [⚙️ Command-Line Arguments](#️-command-line-arguments)
+  - [Examples](#examples)
+- [🤝 Contributing and Reporting Issues](#-contributing-and-reporting-issues)
 
-- **Student perspective**: "I'm glad RepoRover made it easy for me to quickly
-receive feedback on my project repositories from GitHub Classroom."
-- **Instructor perspective**: "RepoRover makes it much easier for me to oversee
-my students' repositories, manage access levels, and leave feedback on their
-pull requests."
-- **Developer perspective**: "Since RepoRover uses `uv` to manage its
-development, I found that it is very easy to add features, saving me a lot of
-time and effort."
+## ✨ Perspectives
 
-## :wink: Why `pytest-brightest`?
+`pytest-brightest` is a tool that helps software engineers run their test
+suites more effectively. Here are three perspectives on how it can be useful:
 
-In the world of software testing, not all test executions are created equal.
-Some tests are long, others are short. Some are prone to failure, while others
-are steadfastly reliable. `pytest-brightest` leverages these characteristics to
-help you run your test suite in a more intelligent and efficient manner. Whether
-you want to get feedback faster, find flaky tests, or simply bring a little more
-order to your testing chaos, `pytest-brightest` is here to help.
+- **The Busy Developer**: "I need to get feedback from my tests as quickly as
+possible. By using `pytest-brightest` to run the fastest tests first, I can
+find out if I've introduced any simple bugs in seconds, rather than waiting
+minutes for the whole suite to run."
+- **The Quality Assurance Engineer**: "My team is struggling with flaky tests
+that pass or fail unpredictably. `pytest-brightest`'s shuffling capabilities
+help us identify these tests by breaking hidden dependencies, making our test
+suite more reliable."
+- **The Open-Source Maintainer**: "When a contributor submits a pull request, I
+want to be confident it doesn't re-introduce old bugs. Reordering tests to run
+previously failing ones first gives me a faster signal, streamlining my review
+process."
 
-This plugin is inspired by years of research in software testing, including my
-own work on [time-aware test suite
-prioritization](https://scholar.google.com/scholar?q=time-aware+test+suite+prioritization+kapfhammer)
-and the broader academic discourse on regression testing and flaky tests.
+## 🚀 Why `pytest-brightest`?
 
-## Requirements
+In software testing, not all test executions are created equal. Some tests are
+long, others are short. Some are prone to failure, while others are steadfastly
+reliable. `pytest-brightest` leverages these characteristics to help you run
+your test suite in a more intelligent and efficient manner. Whether you want to
+get feedback faster, find flaky tests, or simply bring a little more order to
+your testing chaos, `pytest-brightest` is here to help.
+
+This plugin is inspired by years of research in software testing, including work on [time-aware test suite prioritization](https://scholar.google.com/scholar?q=time-aware+test+suite+prioritization) and the broader academic discourse on regression testing and flaky tests.
+
+## 📋 Requirements
 
 To use `pytest-brightest`, you'll need:
 
-- `pytest`
-- `pytest-json-report`
+-   `pytest`
+-   `pytest-json-report`
 
-`pytest-brightest` uses the data generated by `pytest-json-report` to work its
-magic. But don't worry, if you have `pytest-json-report` installed,
-`pytest-brightest` will automatically configure it for you!
+`pytest-brightest` uses the data generated by `pytest-json-report` to work its magic. If you have `pytest-json-report` installed, `pytest-brightest` will automatically configure it for you.
 
-## Modes of Operation
+## 🛠️ Modes of Operation
 
-`pytest-brightest` can be enabled with the `--brightest` flag and can operate in
-several modes, configured through the `--reorder-by-technique` option.
+`pytest-brightest` is enabled with the `--brightest` flag and can operate in several modes, configured through the `--reorder-by-technique` option.
 
 ### Reordering
 
 You can reorder your tests based on a variety of criteria:
 
-- **`cost`**: Reorders tests based on their execution time from the previous
-run. This is perfect for getting quick feedback by running faster tests first.
-- **`name`**: Reorders tests alphabetically by their name.
-- **`failure`**: Reorders tests based on their failure history, running tests
-that failed in the previous run first. This is a powerful technique for
-regression testing.
+-   **`cost`**: Reorders tests based on their execution time from the previous run. This is perfect for getting quick feedback by running faster tests first.
+-   **`name`**: Reorders tests alphabetically by their name.
+-   **`failure`**: Reorders tests based on their failure history, running tests that failed in the previous run first. This is a powerful technique for regression testing.
 
 ### Shuffling
 
-- **`shuffle`**: Randomizes the order of your tests. This is an excellent way
-to uncover hidden dependencies between tests and identify "flaky" tests that
-pass or fail based on the order in which they are run.
+-   **`shuffle`**: Randomizes the order of your tests. This is an excellent way to uncover hidden dependencies between tests and identify "flaky" tests that pass or fail based on the order in which they are run.
 
-## Command-Line Arguments
+## ⚙️ Command-Line Arguments
 
 Here's a breakdown of the command-line arguments you can use to control `pytest-brightest`:
 
-| Argument | Options | Default | Description |
-| ------------------------ | --------------------------------------------------------------------- |
----------------------- | ----------------------------------------------------------------------------------------- |
-| `--brightest` | (flag) | `False` | Enable the `pytest-brightest` plugin. |
-| `--reorder-by-technique` | `shuffle`, `name`, `cost`, `failure` | `None` | The technique to use for reordering or
-shuffling tests. |
-| `--reorder-by-focus` | `modules-within-suite`, `tests-within-module`, `tests-across-modules` | `tests-across-modules`
-| The scope of the reordering or shuffling. |
-| `--reorder-in-direction` | `ascending`, `descending` | `ascending` | The direction of the reordering. |
-| `--seed` | (integer) | (random) | A seed for the random number generator used for shuffling, ensuring reproducible
-results. |
+| Argument                 | Options                                                              | Default                  | Description                                                                                             |
+| ------------------------ | -------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `--brightest`            | (flag)                                                               | `False`                  | Enable the `pytest-brightest` plugin.                                                                   |
+| `--reorder-by-technique` | `shuffle`, `name`, `cost`, `failure`                                 | `None`                   | The technique to use for reordering or shuffling tests.                                                 |
+| `--reorder-by-focus`     | `modules-within-suite`, `tests-within-module`, `tests-across-modules` | `tests-across-modules`   | The scope of the reordering or shuffling.                                                               |
+| `--reorder-in-direction` | `ascending`, `descending`                                            | `ascending`              | The direction of the reordering.                                                                        |
+| `--seed`                 | (integer)                                                            | (random)                 | A seed for the random number generator used for shuffling, ensuring reproducible results.               |
 
 ### Examples
 
-**Run faster tests first:**
+#### Run faster tests first:
 
 ```bash
 pytest --brightest --reorder-by-technique cost --reorder-in-direction ascending
 ```
 
-**Run previously failing tests first:**
+#### Run previously failing tests first:
 
 ```bash
 pytest --brightest --reorder-by-technique failure --reorder-in-direction descending
 ```
 
-**Shuffle all tests with a specific seed:**
+#### Shuffle all tests with a specific seed:
 
 ```bash
 pytest --brightest --reorder-by-technique shuffle --seed 12345
 ```
 
-**Shuffle tests within each module, but keep the module order:**
+#### Shuffle tests within each module, but keep the module order:
 
 ```bash
 pytest --brightest --reorder-by-technique shuffle --reorder-by-focus tests-within-module
 ```
 
-## Contributing and Reporting Issues
+## 🤝 Contributing and Reporting Issues
 
-I welcome contributions and bug reports! Science and software both advance through collaboration.
+Contributions are welcome! This project is open-source and thrives on community involvement.
 
-- **Issues**: If you find a bug or have a feature request, please [open an
-issue](https://github.com/AstuteSource/pytest-brightest/issues).
-- **Pull Requests**: If you'd like to contribute code, please feel free to [submit a pull
-request](https://github.com/AstuteSource/pytest-brightest/pulls).
-
-Let's make testing brighter, together!
+-   **Issues**: If you find a bug or have a feature request, please [open an issue](https://github.com/AstuteSource/pytest-brightest/issues).
+-   **Pull Requests**: If you'd like to contribute code, please [submit a pull request](https://github.com/AstuteSource/pytest-brightest/pulls).
