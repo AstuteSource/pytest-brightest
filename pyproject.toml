@@ -125,4 +125,3 @@ test-coverage-silent = { cmd = "{coverage-test-command-silent}", help = "Run the
 
 [tool.mypy]
 ignore_missing_imports = true
-
