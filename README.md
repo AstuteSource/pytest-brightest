@@ -4,8 +4,9 @@
 [![Maintenance](https://img.shields.io/badge/maintained%3F-Yes-blue.svg)](https://github.com/AstuteSource/pytest-brightest/graphs/commit-activity)
 [![License LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
-A `pytest` plugin to illuminate your test suite with the brightest ideas in
-software testing research.
+What is `pytest-brightest`? It is a `pytest` plugin that uses the brightest
+ideas in software testing research to illuminate problems with your test suite
+and brighten up the execution of your tests.
 
 ## 📖 Table of Contents
 
@@ -50,11 +51,6 @@ brightest ideas from software testing research; it's about making your `test`s
 brighter (yes, the pun is intended!). Whether you want to get feedback faster,
 find flaky tests, or simply bring more clarity to your testing chaos,
 `pytest-brightest` is here to help.
-
-This plugin is inspired by years of research in software testing, including
-work on [time-aware test suite
-prioritization](https://scholar.google.com/scholar?q=time-aware+test+suite+prioritization)
-and the broader academic discourse on regression testing and flaky tests.
 
 ## 📋 Requirements
 
