@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://github.com/AstuteSource/pytest-brightest/blob/main/.github/images/pytest-brightest-logo.svg" alt="pytest-brightest Logo"
+    title="pytest-brightest Logo" />
+</p>
+
 # 🔦 pytest-brightest
 
 [![Build](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml/badge.svg)](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml)
