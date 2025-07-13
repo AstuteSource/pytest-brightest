@@ -83,8 +83,8 @@ line_length = 88
 [tool.taskipy.variables]
 agents = "AGENTS.md"
 gemini = "GEMINI.md"
-readme = "README.md"
 plan = "docs/plan.md"
+readme = "README.md"
 project = "src/pytest_brightest"
 tests = "tests"
 check-command = { var = "ruff check {project} {tests}", recursive = true }
