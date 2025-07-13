@@ -45,7 +45,10 @@ your test suite in a more intelligent and efficient manner. Whether you want to
 get feedback faster, find flaky tests, or simply bring a little more order to
 your testing chaos, `pytest-brightest` is here to help.
 
-This plugin is inspired by years of research in software testing, including work on [time-aware test suite prioritization](https://scholar.google.com/scholar?q=time-aware+test+suite+prioritization) and the broader academic discourse on regression testing and flaky tests.
+This plugin is inspired by years of research in software testing, including
+work on [time-aware test suite
+prioritization](https://scholar.google.com/scholar?q=time-aware+test+suite+prioritization)
+and the broader academic discourse on regression testing and flaky tests.
 
 ## 📋 Requirements
 
