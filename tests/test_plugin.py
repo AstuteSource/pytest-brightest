@@ -4,10 +4,12 @@
 
 from pytest_brightest.plugin import (
     BrightestPlugin,
+    _get_brightest_data,
     _plugin,
     pytest_addoption,
     pytest_collection_modifyitems,
     pytest_configure,
+    pytest_runtest_logreport,
     pytest_sessionfinish,
 )
 
@@ -145,6 +147,22 @@ class TestBrightestPlugin:
             ":high_brightness: pytest-brightest: Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
         )
 
+    def test_configure_json_report_setup_fails(self, mock_config, mocker):
+        """Test that a warning is issued when json report setup fails."""
+        mock_console_print = mocker.patch(
+            "pytest_brightest.plugin.console.print"
+        )
+        mocker.patch(
+            "pytest_brightest.plugin.setup_json_report_plugin",
+            return_value=False,
+        )
+        plugin = BrightestPlugin()
+        config = mock_config({"--brightest": True})
+        plugin.configure(config)
+        mock_console_print.assert_any_call(
+            ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
+        )
+
 
 def test_brightestplugin_record_test_failure():
     """Test recording test failures in BrightestPlugin."""
@@ -200,6 +218,20 @@ class TestHooks:
         pytest_collection_modifyitems(config, items)
         mock_plugin.reorder_tests.assert_called_once_with(items)
         mock_plugin.shuffle_tests.assert_called_once_with(items)
+
+    def test_pytest_runtest_logreport(self, mocker):
+        """Test that pytest_runtest_logreport records failures."""
+        mock_plugin = mocker.patch(
+            "pytest_brightest.plugin._plugin", autospec=True
+        )
+        mock_plugin.enabled = True
+        mock_plugin.technique = "failure"
+        report = mocker.MagicMock()
+        report.failed = True
+        report.when = "call"
+        report.nodeid = "test_node"
+        pytest_runtest_logreport(report)
+        mock_plugin.record_test_failure.assert_called_once_with("test_node")
 
     def test_pytest_sessionfinish_no_json_file(self, mocker, mock_config):
         """Test that pytest_sessionfinish handles no JSON file."""
@@ -327,3 +359,37 @@ class TestHooks:
             "module_b.py": 2,
             "module_c.py": 0,
         }
+
+
+def test_get_brightest_data_all_branches(mocker, mock_test_item):
+    """Test _get_brightest_data for all branches."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_session = mocker.MagicMock()
+    # technique: cost, Focus: modules-within-suite
+    mock_plugin.technique = "cost"
+    mock_plugin.focus = "modules-within-suite"
+    mock_plugin.reorderer = mocker.MagicMock()
+    mock_plugin.reorderer.get_test_total_duration.return_value = 1.0
+    mock_session.items = [mock_test_item("mod1::test1")]
+    data = _get_brightest_data(mock_session)
+    assert "current_module_costs" in data
+    # technique: cost, Focus: tests-within-module
+    mock_plugin.focus = "tests-within-module"
+    data = _get_brightest_data(mock_session)
+    assert "current_test_costs" in data
+    # technique: name, Focus: modules-within-suite
+    mock_plugin.technique = "name"
+    mock_plugin.focus = "modules-within-suite"
+    mock_session.items = [mock_test_item("mod1::test1")]
+    data = _get_brightest_data(mock_session)
+    assert "current_module_order" in data
+    # technique: name, Focus: tests-across-modules
+    mock_plugin.focus = "tests-across-modules"
+    data = _get_brightest_data(mock_session)
+    assert "current_test_order" in data
+    # technique: name, Focus: tests-within-module
+    mock_plugin.focus = "tests-within-module"
+    data = _get_brightest_data(mock_session)
+    assert "current_module_tests" in data
