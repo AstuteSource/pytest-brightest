@@ -97,67 +97,66 @@ several modes, configured through the `--reorder-by-technique` option.
 
 You can reorder your tests based on a variety of criteria:
 
--   **`cost`**: Reorders tests based on their execution time from the previous
-    run. This is perfect for getting quick feedback by running faster tests
-    first.
--   **`name`**: Reorders tests alphabetically by their name.
--   **`failure`**: Reorders tests based on their failure history, running tests
-    that failed in the previous run first. This is a powerful technique for
-    regression testing.
+- **`cost`**: Reorders tests based on their execution time from the previous
+run. This is perfect for getting quick feedback by running faster tests first.
+- **`name`**: Reorders tests alphabetically by their name.
+- **`failure`**: Reorders tests based on their failure history, running tests
+that failed in the previous run first. This is a powerful technique for
+regression testing.
 
 ### Shuffling
 
--   **`shuffle`**: Randomizes the order of your tests. This is an excellent way
-    to uncover hidden dependencies between tests and identify "flaky" tests
-    that pass or fail based on the order in which they are run.
+- **`shuffle`**: Randomizes the order of your tests. This is an excellent way to
+uncover hidden dependencies between tests and identify "flaky" tests that pass
+or fail based on the order in which they are run.
 
 ## ⚙️ Command-Line Arguments
 
 Here's a breakdown of the command-line arguments you can use to control
 `pytest-brightest`:
 
--   `--brightest`
-    -   **Description**: Enable the `pytest-brightest` plugin.
-    -   **Default**: `False`
--   `--reorder-by-technique`
-    -   **Description**: The technique to use for reordering or shuffling tests.
-    -   **Options**: `shuffle`, `name`, `cost`, `failure`
-    -   **Default**: `None`
--   `--reorder-by-focus`
-    -   **Description**: The scope of the reordering or shuffling.
-    -   **Options**: `modules-within-suite`, `tests-within-module`,
-        `tests-across-modules`
-    -   **Default**: `tests-across-modules`
--   `--reorder-in-direction`
-    -   **Description**: The direction of the reordering.
-    -   **Options**: `ascending`, `descending`
-    -   **Default**: `ascending`
--   `--seed`
-    -   **Description**: A seed for the random number generator used for
-        shuffling, ensuring reproducible results.
-    -   **Default**: (random)
+- `--brightest`
+    - **Description**: Enable the `pytest-brightest` plugin.
+    - **Default**: `False`
+- `--reorder-by-technique`
+    - **Description**: The technique to use for reordering or shuffling tests.
+    - **Options**: `shuffle`, `name`, `cost`, `failure`
+    - **Default**: `None`
+- `--reorder-by-focus`
+    - **Description**: The scope of the reordering or shuffling.
+    - **Options**: `modules-within-suite`, `tests-within-module`,
+    `tests-across-modules`
+    - **Default**: `tests-across-modules`
+- `--reorder-in-direction`
+    - **Description**: The direction of the reordering.
+    - **Options**: `ascending`, `descending`
+    - **Default**: `ascending`
+- `--seed`
+    - **Description**: A seed for the random number generator used for
+    shuffling, ensuring reproducible results.
+    - **Default**: (random)
 
 ### Examples
 
-#### Run faster tests first:
+#### Run faster tests first
 
 ```bash
 pytest --brightest --reorder-by-technique cost --reorder-in-direction ascending
 ```
 
-#### Run previously failing tests first:
+#### Run previously failing tests first
 
 ```bash
 pytest --brightest --reorder-by-technique failure --reorder-in-direction descending
 ```
 
-#### Shuffle all tests with a specific seed:
+#### Shuffle all tests with a specific seed
 
 ```bash
 pytest --brightest --reorder-by-technique shuffle --seed 12345
 ```
 
-#### Shuffle tests within each module, but keep the module order:
+#### Shuffle tests within each module, but keep the module order
 
 ```bash
 pytest --brightest --reorder-by-technique shuffle --reorder-by-focus tests-within-module
@@ -168,7 +167,7 @@ pytest --brightest --reorder-by-technique shuffle --reorder-by-focus tests-withi
 Contributions are welcome! This project is open-source and thrives on community
 involvement. Let's make testing brighter, together.
 
--   **Issues**: If you find a bug or have a feature request, please [open an
-    issue](https://github.com/AstuteSource/pytest-brightest/issues).
--   **Pull Requests**: If you'd like to contribute code, please [submit a pull
-    request](https://github.com/AstuteSource/pytest-brightest/pulls).
+- **Issues**: If you find a bug or have a feature request, please [open an
+issue](https://github.com/AstuteSource/pytest-brightest/issues).
+- **Pull Requests**: If you'd like to contribute code, please [submit a pull
+request](https://github.com/AstuteSource/pytest-brightest/pulls).
