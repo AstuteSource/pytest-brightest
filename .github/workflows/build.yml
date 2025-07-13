@@ -103,6 +103,8 @@ jobs:
             echo "$CURRENT_GITHUB_STEP_SUMMARY" >> $GITHUB_STEP_SUMMARY
         # Upload the coverage badge
         # Important: only report the monitored test coverage on Linux
+        # Name of the Wiki repository:
+        # https://github.com/AstuteSource/pytest-brightest.wiki.git
         - name: Upload Test Coverage Report in JSON Format
           if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && github.ref == 'refs/heads/main'
           run: |
