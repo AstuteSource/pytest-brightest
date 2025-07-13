@@ -76,7 +76,7 @@ To install `pytest-brightest` using `uv`, a fast Python package installer and
 resolver, run the following command:
 
 ```bash
-uv pip install pytest-brightest
+uv add pytest-brightest --group dev
 ```
 
 ### Using `poetry`
@@ -85,7 +85,7 @@ To install `pytest-brightest` using `poetry`, a tool for dependency management
 and packaging in Python, run the following command:
 
 ```bash
-poetry add pytest-brightest
+poetry add pytest-brightest --group dev
 ```
 
 ## 🛠️ Modes of Operation
