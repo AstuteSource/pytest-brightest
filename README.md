@@ -121,8 +121,8 @@ pytest --brightest --reorder-by-technique shuffle --reorder-by-focus tests-withi
 I welcome contributions and bug reports! Science and software both advance through collaboration.
 
 - **Issues**: If you find a bug or have a feature request, please [open an
-issue](https://github.com/gkapfham/pytest-brightest/issues).
+issue](https://github.com/AstuteSource/pytest-brightest/issues).
 - **Pull Requests**: If you'd like to contribute code, please feel free to [submit a pull
-request](https://github.com/gkapfham/pytest-brightest/pulls).
+request](https://github.com/AstuteSource/pytest-brightest/pulls).
 
 Let's make testing brighter, together!
