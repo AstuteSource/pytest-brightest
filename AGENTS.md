@@ -97,13 +97,13 @@ All test cases should follow these standards:
 
 ## Making Changes
 
-1.  **Understand:** Thoroughly understand the request and the relevant codebase.
+1. **Understand:** Thoroughly understand the request and the relevant codebase.
     Use the available tools to explore the code.
-2.  **Plan:** Formulate a clear plan before making any changes.
-3.  **Implement:** Make small, incremental changes.
-4.  **Verify:** Run `uv run task all` to ensure your changes are correct and
+2. **Plan:** Formulate a clear plan before making any changes.
+3. **Implement:** Make small, incremental changes.
+4. **Verify:** Run `uv run task all` to ensure your changes are correct and
     follow the project's style.
-5.  **Commit:** Write a clear and concise commit message explaining the "why" of
+5. **Commit:** Write a clear and concise commit message explaining the "why" of
     your changes.
 6. **Rules**: Always follow the rules in this file and in the `docs/plan.md`
    file.
