@@ -19,6 +19,8 @@ on:
 # This job performs all of the necessary checks
 jobs:
   build:
+    permissions:
+      contents: write
     # Use the latest version of Ubuntu, MacOS, and Windows
     # Use the latest and most stable version of Python
     # Important: test coverage monitoring and reporting
@@ -99,7 +101,7 @@ jobs:
             export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
             echo "total=$TOTAL" >> $GITHUB_ENV
             echo "### Total coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
-            CURRENT_GITHUB_STEP_SUMMARY="\`\`\`\n$(cat coverage.txt)\n\`\`\`"
+            CURRENT_GITHUB_STEP_SUMMARY="```\n$(cat coverage.txt)\n```"
             echo "$CURRENT_GITHUB_STEP_SUMMARY" >> $GITHUB_STEP_SUMMARY
         # Upload the coverage badge
         # Important: only report the monitored test coverage on Linux
