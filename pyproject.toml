@@ -1,6 +1,6 @@
 [project]
 name = "pytest-brightest"
-version = "0.2.0"
+version = "0.1.0"
 description = "Bright ideas for improving your pytest experience"
 readme = "README_PYPI.md"
 authors = [
