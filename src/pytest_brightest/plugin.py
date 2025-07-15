@@ -28,6 +28,7 @@ from .constants import (
     DIRECTION,
     FAILURE,
     FOCUS,
+    HIGH_BRIGHTNESS_PREFIX,
     MODULE_COSTS,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
@@ -87,9 +88,12 @@ class BrightestPlugin:
         # always set up JSON reporting when brightest is enabled;
         # this ensures generation of test execution data for future reordering
         json_setup_success = setup_json_report_plugin(config)
+        # there was a problem configuring the pytest-json-report plugin,
+        # display a diagnostic message and to indicate that certain features
+        # will not be available during this run of the test suite
         if not json_setup_success:
             console.print(
-                ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
+                f"{HIGH_BRIGHTNESS_PREFIX} pytest-json-report setup failed, certain features disabled"
             )
         # extract the configuration options for reordering and shuffling
         self.technique = config.getoption("--reorder-by-technique")
