@@ -160,7 +160,7 @@ class TestBrightestPlugin:
         config = mock_config({"--brightest": True})
         plugin.configure(config)
         mock_console_print.assert_any_call(
-            ":high_brightness: pytest-brightest: pytest-json-report setup failed, reordering features disabled"
+            ":high_brightness: pytest-brightest: pytest-json-report setup failed, certain features disabled"
         )
 
 
