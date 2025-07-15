@@ -42,7 +42,7 @@ jobs:
     # Define the workflow steps
     steps:
     # Checkout the code of the repository
-        - name: Check out Repository Code
+        - name: check out repository code
           uses: actions/checkout@v3
           with:
             fetch-depth: 0
@@ -101,18 +101,25 @@ jobs:
             echo "### Total coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
             CURRENT_GITHUB_STEP_SUMMARY="\`\`\`\n$(cat coverage.txt)\n\`\`\`"
             echo "$CURRENT_GITHUB_STEP_SUMMARY" >> $GITHUB_STEP_SUMMARY
-        # Upload the coverage badge
-        # Important: only report the monitored test coverage on Linux
-        # Name of the Wiki repository:
-        # https://github.com/AstuteSource/pytest-brightest.wiki.git
         - name: Upload Test Coverage Report in JSON Format
-          if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && github.ref == 'refs/heads/main'
-          run: |
-            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AstuteSource/pytest-brightest.wiki.git wiki
-            cp coverage.json wiki/
-            cd wiki
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git add coverage.json
-            git diff --staged --quiet || git commit -m "Update coverage report"
-            git push
+          uses: actions/checkout@v3
+          with:
+            repository: ${{ github.repository }}.wiki
+            path: wiki
+              cd wiki
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              git add coverage.json
+              git diff --staged --quiet || git commit -m "Update coverage report"
+              git push
+
+  # # Upload the coverage badge
+  # # Important: only report the monitored test coverage on Linux
+  # # Name of the Wiki repository:
+  # # https://github.com/AstuteSource/pytest-brightest.wiki.git
+  # - name: Upload Test Coverage Report in JSON Format
+  #   if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && github.ref == 'refs/heads/main'
+  #   run: |
+  #     git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/AstuteSource/pytest-brightest.wiki.git wiki
+  #     cp coverage.json wiki/
+
