@@ -1,35 +1,25 @@
-<p align="center">
-  <img src="https://github.com/AstuteSource/pytest-brightest/blob/main/.github/images/pytest-brightest-logo.svg" alt="pytest-brightest Logo"
-    title="pytest-brightest Logo" />
-</p>
-
-# 🔦 pytest-brightest
-
-[![Build](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml/badge.svg)](https://github.com/AstuteSource/pytest-brightest/actions/workflows/build.yml)
-[![Coverage](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=coverage&query=%24.totals.percent_covered_display&suffix=%25&url=https%3A//raw.githubusercontent.com/wiki/AstuteSource/pytest-brightest/coverage.json)](https://github.com/AstuteSource/pytest-brightest)
-[![Maintenance](https://img.shields.io/badge/maintained%3F-Yes-blue.svg)](https://github.com/AstuteSource/pytest-brightest/graphs/commit-activity)
-[![License LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+# pytest-brightest
 
 What is `pytest-brightest`? It is a `pytest` plugin that uses the brightest
 ideas in software testing research to illuminate problems with your test suite
 and brighten up the execution of your tests.
 
-## 📖 Table of Contents
+## Table of Contents
 
-- [✨ Perspectives](#-perspectives)
-- [🚀 Why `pytest-brightest`?](#-why-pytest-brightest)
-- [📋 Requirements](#-requirements)
-- [💾 Installation](#-installation)
+- [Perspectives](#perspectives)
+- [Why `pytest-brightest`?](#why-pytest-brightest)
+- [Requirements](#requirements)
+- [Installation](#installation)
   - [Using `uv`](#using-uv)
   - [Using `poetry`](#using-poetry)
-- [🛠️ Modes of Operation](#️-modes-of-operation)
+- [Modes of Operation](#modes-of-operation)
   - [Reordering](#reordering)
   - [Shuffling](#shuffling)
-- [⚙️ Command-Line Arguments](#️-command-line-arguments)
+- [Command-Line Arguments](#command-line-arguments)
   - [Examples](#examples)
-- [🤝 Contributing and Reporting Issues](#-contributing-and-reporting-issues)
+- [Contributing and Reporting Issues](#contributing-and-reporting-issues)
 
-## ✨ Perspectives
+## Perspectives
 
 `pytest-brightest` is a tool that helps software engineers run their test
 suites more effectively. Here are three perspectives on how it can be useful:
@@ -47,7 +37,7 @@ want to be confident it doesn't re-introduce old bugs. Reordering tests to run
 previously failing ones first gives me a faster signal, streamlining my review
 process."
 
-## 🚀 Why `pytest-brightest`?
+## Why `pytest-brightest`?
 
 In software testing, not all test executions are created equal. Some tests are
 long, others are short. Some are prone to failure, while others are steadfastly
@@ -58,7 +48,7 @@ brighter (yes, the pun is intended!). Whether you want to get feedback faster,
 find flaky tests, or simply bring more clarity to your testing chaos,
 `pytest-brightest` is here to help.
 
-## 📋 Requirements
+## Requirements
 
 To use `pytest-brightest`, you'll need:
 
@@ -69,7 +59,7 @@ To use `pytest-brightest`, you'll need:
 magic. If you have `pytest-json-report` installed, `pytest-brightest` will
 automatically configure it for you.
 
-## 💾 Installation
+## Installation
 
 ### Using `uv`
 
@@ -89,7 +79,7 @@ and packaging in Python, run the following command:
 poetry add pytest-brightest --group dev
 ```
 
-## 🛠️ Modes of Operation
+## Modes of Operation
 
 `pytest-brightest` is enabled with the `--brightest` flag and can operate in
 several modes, configured through the `--reorder-by-technique` option.
@@ -111,7 +101,7 @@ regression testing.
 uncover hidden dependencies between tests and identify "flaky" tests that pass
 or fail based on the order in which they are run.
 
-## ⚙️ Command-Line Arguments
+## Command-Line Arguments
 
 Here's a breakdown of the command-line arguments you can use to control
 `pytest-brightest`:
@@ -163,7 +153,7 @@ pytest --brightest --reorder-by-technique shuffle --seed 12345
 pytest --brightest --reorder-by-technique shuffle --reorder-by-focus tests-within-module
 ```
 
-## 🤝 Contributing and Reporting Issues
+## Contributing and Reporting Issues
 
 Contributions are welcome! This project is open-source and thrives on community
 involvement. Let's make testing brighter, together.
