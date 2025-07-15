@@ -26,6 +26,7 @@ from .constants import (
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DESCENDING,
     DIRECTION,
+    EMPTY_STRING,
     FAILURE,
     FLASHLIGHT_PREFIX,
     FOCUS,
@@ -283,7 +284,7 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
             nodeid = getattr(item, NODEID, "")
             if nodeid:
                 cost = _plugin.reorderer.get_test_total_duration(item)
-                module_path = nodeid.split("::")[0]
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
                 current_module_costs[module_path] = (
                     current_module_costs.get(module_path, 0.0) + cost
                 )
@@ -302,9 +303,9 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
         if _plugin.focus == MODULES_WITHIN_SUITE:
             current_module_order = []
             for item in session.items:
-                nodeid = getattr(item, NODEID, "")
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
-                    module_path = nodeid.split("::")[0]
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in current_module_order:
                         current_module_order.append(module_path)
             brightest_data[CURRENT_MODULE_ORDER] = current_module_order
