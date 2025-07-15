@@ -252,6 +252,24 @@ class TestHooks:
         pytest_collection_modifyitems(config, items)
         mock_plugin.reorder_tests.assert_called_once_with(items)
 
+    def test_pytest_collection_modifyitems_reorder_and_shuffle_prefers_reorder(
+        self, mocker, mock_config, mock_test_item
+    ):
+        """Test that reordering is preferred when reordering and shuffling are enabled."""
+        # mock the _plugin instance and its methods
+        mock_plugin = mocker.patch(
+            "pytest_brightest.plugin._plugin", autospec=True
+        )
+        mock_plugin.enabled = True
+        mock_plugin.reorder_enabled = True
+        mock_plugin.shuffle_enabled = True
+        mock_plugin.technique = None
+        config = mock_config()
+        items = [mock_test_item("one"), mock_test_item("two")]
+        pytest_collection_modifyitems(config, items)
+        mock_plugin.reorder_tests.assert_called_once_with(items)
+        mock_plugin.shuffle_tests.assert_not_called()
+
     def test_pytest_runtest_logreport(self, mocker):
         """Test that pytest_runtest_logreport records failures."""
         mock_plugin = mocker.patch(
