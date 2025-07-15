@@ -226,15 +226,23 @@ def pytest_collection_modifyitems(config: Config, items: List[Item]) -> None:
     """Modify the collected test items by applying reordering and shuffling."""
     # indicate that config parameter is not used
     _ = config
-    # if the plugin is enabled, then apply the reordering and shuffling
+    # if the plugin is enabled, then apply the reordering in one of the
+    # specified techniques according to the command-line options
     if _plugin.enabled:
         # store the original items for later use in data collection
         _plugin.store_session_items(items)
-        # apply reordering first (based on previous test performance)
+        # notes about how to use the pytest-brightest plugin:
+        # (a) the plugin allows for either the shuffling of the test
+        # suite or the reordering of the test suite, but a person
+        # using the plugin cannot use both techniques at the same time
+        # (b) the plugin defaults to using one of the reordering
+        # techniques as the default if both techniques are (accidentally)
+        # specified on the command line by the person using the plugin
+        # --> Use the reordering technique
         if _plugin.reorder_enabled:
             _plugin.reorder_tests(items)
-        # apply shuffling second (randomizes the reordered or original test order)
-        if _plugin.shuffle_enabled:
+        # --> Use the shuffling technique
+        elif _plugin.shuffle_enabled:
             _plugin.shuffle_tests(items)
 
 
