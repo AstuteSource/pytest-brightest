@@ -201,7 +201,41 @@ class TestHooks:
         pytest_configure(config)
         _plugin.configure.assert_called_once_with(config)  # type: ignore
 
-    def test_pytest_collection_modifyitems(
+    def test_pytest_collection_modifyitems_first_strategy(
+        self, mocker, mock_config, mock_test_item
+    ):
+        """Test that pytest_collection_modifyitems modifies the items."""
+        # mock the _plugin instance and its methods
+        mock_plugin = mocker.patch(
+            "pytest_brightest.plugin._plugin", autospec=True
+        )
+        mock_plugin.enabled = True
+        mock_plugin.reorder_enabled = True
+        mock_plugin.shuffle_enabled = False
+        mock_plugin.technique = None
+        config = mock_config()
+        items = [mock_test_item("one"), mock_test_item("two")]
+        pytest_collection_modifyitems(config, items)
+        mock_plugin.reorder_tests.assert_called_once_with(items)
+
+    def test_pytest_collection_modifyitems_second_strategy(
+        self, mocker, mock_config, mock_test_item
+    ):
+        """Test that pytest_collection_modifyitems modifies the items."""
+        # mock the _plugin instance and its methods
+        mock_plugin = mocker.patch(
+            "pytest_brightest.plugin._plugin", autospec=True
+        )
+        mock_plugin.enabled = True
+        mock_plugin.reorder_enabled = False
+        mock_plugin.shuffle_enabled = True
+        mock_plugin.technique = None
+        config = mock_config()
+        items = [mock_test_item("one"), mock_test_item("two")]
+        pytest_collection_modifyitems(config, items)
+        mock_plugin.shuffle_tests.assert_called_once_with(items)
+
+    def test_pytest_collection_modifyitems_default_to_reorder(
         self, mocker, mock_config, mock_test_item
     ):
         """Test that pytest_collection_modifyitems modifies the items."""
@@ -217,7 +251,6 @@ class TestHooks:
         items = [mock_test_item("one"), mock_test_item("two")]
         pytest_collection_modifyitems(config, items)
         mock_plugin.reorder_tests.assert_called_once_with(items)
-        mock_plugin.shuffle_tests.assert_called_once_with(items)
 
     def test_pytest_runtest_logreport(self, mocker):
         """Test that pytest_runtest_logreport records failures."""
