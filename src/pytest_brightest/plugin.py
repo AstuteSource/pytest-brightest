@@ -313,7 +313,7 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
             brightest_data[MODULE_ORDER] = current_module_order
         elif _plugin.focus == TESTS_ACROSS_MODULES:
             current_test_order = [
-                getattr(item, NODEID, "") for item in session.items
+                getattr(item, NODEID, EMPTY_STRING) for item in session.items
             ]
             brightest_data[CURRENT_TEST_ORDER] = current_test_order
             # maintain legacy key for backward compatibility
@@ -321,9 +321,9 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
         elif _plugin.focus == TESTS_WITHIN_MODULE:
             current_module_tests: Dict[str, List[str]] = {}
             for item in session.items:
-                nodeid = getattr(item, NODEID, "")
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
-                    module_path = nodeid.split("::")[0]
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in current_module_tests:
                         current_module_tests[module_path] = []
                     current_module_tests[module_path].append(nodeid)
