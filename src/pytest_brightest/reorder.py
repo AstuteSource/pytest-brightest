@@ -460,7 +460,9 @@ def create_reorderer(
 
 def setup_json_report_plugin(config) -> bool:
     """Configure pytest-json-report plugin to generate JSON reports automatically."""
-    # attempt to configure the pytest-json-report plugin if needed
+    # attempt to configure the pytest-json-report plugin since the data
+    # that it produces is useful for certain reordering tasks like,
+    # for instance, reordering tests by cumulative execution time
     try:
         # determine whether or not the pytest-json-report plugin is available
         # and display a suitable diagnostic message before running test suite
