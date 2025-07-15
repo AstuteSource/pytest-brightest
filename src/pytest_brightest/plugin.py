@@ -85,7 +85,7 @@ class BrightestPlugin:
         # JSON file that contains the pytest-json-report data
         self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
         # always set up JSON reporting when brightest is enabled;
-        # this ensures generation of performance data for future reordering
+        # this ensures generation of test execution data for future reordering
         json_setup_success = setup_json_report_plugin(config)
         if not json_setup_success:
             console.print(
