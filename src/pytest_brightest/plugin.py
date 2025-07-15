@@ -27,6 +27,7 @@ from .constants import (
     DESCENDING,
     DIRECTION,
     FAILURE,
+    FLASHLIGHT_PREFIX,
     FOCUS,
     HIGH_BRIGHTNESS_PREFIX,
     MODULE_COSTS,
@@ -37,6 +38,7 @@ from .constants import (
     NAME,
     NEWLINE,
     NODEID,
+    NODEID_SEPARATOR,
     SEED,
     SHUFFLE,
     TECHNIQUE,
@@ -100,6 +102,7 @@ class BrightestPlugin:
         self.focus = config.getoption("--reorder-by-focus")
         self.direction = config.getoption("--reorder-in-direction")
         # if the shuffling technique is chosen, then configure the shuffler
+        # and alert the person using the plugin if there is a misconfiguration
         if self.technique == SHUFFLE:
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
@@ -112,11 +115,11 @@ class BrightestPlugin:
                 self.seed = generate_random_seed()
             self.shuffler = ShufflerOfTests(self.seed)
             console.print(
-                f":flashlight: pytest-brightest: Shuffling tests by {self.shuffle_by} with seed {self.seed}"
+                f"{FLASHLIGHT_PREFIX} Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
             if self.direction is not None:
                 console.print(
-                    ":high_brightness: pytest-brightest: Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
+                    f"{HIGH_BRIGHTNESS_PREFIX} Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
                 )
         # if the reordering technique is chosen, then configure the reorderer
         elif self.technique in [NAME, COST, FAILURE]:
@@ -126,13 +129,13 @@ class BrightestPlugin:
             if json_setup_success and self.brightest_json_file:
                 self.reorderer = ReordererOfTests(self.brightest_json_file)
             console.print(
-                f":flashlight: pytest-brightest: Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
+                f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )
 
     def record_test_failure(self, nodeid: str) -> None:
         """Record a test failure for the current session."""
         if nodeid:
-            module_path = nodeid.split("::")[0]
+            module_path = nodeid.split(NODEID_SEPARATOR)[0]
             if module_path not in self.current_session_failures:
                 self.current_session_failures[module_path] = 0
             self.current_session_failures[module_path] += 1
