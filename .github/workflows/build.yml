@@ -101,6 +101,8 @@ jobs:
             echo "### Total coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
             CURRENT_GITHUB_STEP_SUMMARY="\`\`\`\n$(cat coverage.txt)\n\`\`\`"
             echo "$CURRENT_GITHUB_STEP_SUMMARY" >> $GITHUB_STEP_SUMMARY
+        # Upload the JSON-based coverage report to the wiki so that
+        # it is available for display as a badge in the README.md file
         - name: Upload Test Coverage Report in JSON Format
           if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
           uses: actions/checkout@v3
