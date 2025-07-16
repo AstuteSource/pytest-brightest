@@ -204,6 +204,62 @@ and understand. If there are any inconsistencies in the description of the tool,
 then the agent implementing this refactoring should check in with the designer
 of the pytest-brightest plugin to clarify details.
 
+6) An example of the `brightest` section of the JSON file would be:
+
+```json
+"brightest": [
+    {
+        "runcount": 1,
+        "timestamp": "2025-07-15T22:03:39.926943",
+        "technique": "cost",
+        "focus": "modules-within-suite",
+        "direction": "ascending",
+        "seed": null,
+        "data": {
+            "test_case_costs": {
+                "tests/test_actions.py::test_get_github_actions_status_no_runs": 0.0005024719866923988,
+                "tests/test_actions.py::test_get_github_actions_status_success_with_runs": 0.0012274129840079695,
+                < ... more test case cost data ... >
+            }
+            "test_module_costs": {
+                "tests/test_models.py": 0.004262267902959138,
+                "tests/test_user.py": 0.005330827989382669,
+                "tests/test_actions.py": 0.0049656800692901015,
+                "tests/test_find.py": 0.007323569996515289,
+                "tests/test_constants.py": 0.007342756842263043,
+                "tests/test_pullrequest.py": 0.00743798105395399,
+                "tests/test_repository.py": 0.014911067992215976,
+                "tests/test_status.py": 0.1593270179873798,
+                "tests/test_main.py": 0.11824749677907676,
+                "tests/test_util.py": 0.22743810291285627,
+                "tests/test_discover.py": 0.2617855129938107
+                < ... more test module cost data ... >
+            }
+            "test_case_failures": {
+                "tests/test_actions.py::test_get_github_actions_status_no_runs": 0,
+                "tests/test_actions.py::test_get_github_actions_status_success_with_runs": 0,
+                < ... more test case failure data ... >
+            },
+            "test_module_failures": {
+                "tests/test_models.py": 0,
+                "tests/test_user.py": 0,
+                "tests/test_actions.py": 0,
+                "tests/test_find.py": 0,
+                "tests/test_constants.py": 0,
+                "tests/test_pullrequest.py": 0,
+                "tests/test_repository.py": 0,
+                "tests/test_status.py": 0,
+                "tests/test_main.py": 0,
+                "tests/test_util.py": 0,
+                "tests/test_discover.py": 0
+                < ... more test module failure data ... >
+            }
+        }
+    }
+    < more entries for follow-on runs of the test suite with pytest-brightest plugin ... >
+]
+```
+
 ## Finished Refactoring Instructions
 
 1) Even though the command-line interface for the pytest-brightest plugin is
