@@ -64,17 +64,17 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "modules-within-suite"
     )
-    assert "module_costs" in d
+    assert "test_module_costs" in d
     # COST, TESTS_WITHIN_MODULE
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "tests-within-module"
     )
-    assert "test_costs" in d
+    assert "test_case_costs" in d
     # COST, TESTS_ACROSS_MODULES
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "tests-across-modules"
     )
-    assert "test_costs" in d
+    assert "test_case_costs" in d
     # NAME, MODULES_WITHIN_SUITE
     d = reorderer.get_prior_data_for_reordering(
         items, "name", "modules-within-suite"
