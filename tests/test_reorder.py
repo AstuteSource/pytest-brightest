@@ -64,37 +64,37 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "modules-within-suite"
     )
-    assert "prior_module_costs" in d
+    assert "module_costs" in d
     # COST, TESTS_WITHIN_MODULE
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "tests-within-module"
     )
-    assert "prior_test_costs" in d
+    assert "test_costs" in d
     # COST, TESTS_ACROSS_MODULES
     d = reorderer.get_prior_data_for_reordering(
         items, "cost", "tests-across-modules"
     )
-    assert "prior_test_costs" in d
+    assert "test_costs" in d
     # NAME, MODULES_WITHIN_SUITE
     d = reorderer.get_prior_data_for_reordering(
         items, "name", "modules-within-suite"
     )
-    assert "prior_module_order" in d
+    assert "module_order" in d
     # NAME, TESTS_ACROSS_MODULES
     d = reorderer.get_prior_data_for_reordering(
         items, "name", "tests-across-modules"
     )
-    assert "prior_test_order" in d
+    assert "test_order" in d
     # NAME, TESTS_WITHIN_MODULE
     d = reorderer.get_prior_data_for_reordering(
         items, "name", "tests-within-module"
     )
-    assert "prior_module_tests" in d
+    assert "module_tests" in d
     # FAILURE, MODULES_WITHIN_SUITE
     d = reorderer.get_prior_data_for_reordering(
         items, "failure", "modules-within-suite"
     )
-    assert "prior_module_failure_counts" in d
+    assert "module_failure_counts" in d
 
 
 def test_reorder_tests_in_place_empty():

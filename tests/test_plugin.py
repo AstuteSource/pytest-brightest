@@ -315,6 +315,7 @@ class TestHooks:
         mock_plugin.focus = "tests-across-modules"
         mock_plugin.direction = "ascending"
         mock_plugin.seed = 123
+        mock_plugin.historical_brightest_data = []
         mock_path_exists = mocker.patch(
             "pathlib.Path.exists", return_value=True
         )
@@ -366,6 +367,7 @@ class TestHooks:
             "module_b.py": 2,
             "module_c.py": 0,
         }
+        mock_plugin.historical_brightest_data = []
         # mock _plugin.reorderer directly
         mock_plugin.reorderer = mocker.MagicMock()
         mock_plugin.reorderer.last_module_failure_counts = {
@@ -408,7 +410,7 @@ class TestHooks:
         assert isinstance(dumped_data["brightest"], list)
         assert len(dumped_data["brightest"]) == 1
         run_data = dumped_data["brightest"][0]
-        assert run_data["data"]["module_failure_counts"] == {
+        assert run_data["data"]["test_module_failures"] == {
             "module_a.py": 1,
             "module_b.py": 2,
             "module_c.py": 0,
@@ -426,28 +428,18 @@ def test_get_brightest_data_all_branches(mocker, mock_test_item):
     mock_plugin.focus = "modules-within-suite"
     mock_plugin.reorderer = mocker.MagicMock()
     mock_plugin.reorderer.get_test_total_duration.return_value = 1.0
+    mock_plugin.reorderer.get_test_outcome.return_value = "passed"
+    mock_plugin.current_session_failures = {}
     mock_session.items = [mock_test_item("mod1::test1")]
     data = _get_brightest_data(mock_session)
     assert "data" in data
-    assert "current_module_costs" in data["data"]
-    # technique: cost, Focus: tests-within-module
-    mock_plugin.focus = "tests-within-module"
-    data = _get_brightest_data(mock_session)
-    assert "current_test_costs" in data["data"]
-    # technique: name, Focus: modules-within-suite
-    mock_plugin.technique = "name"
-    mock_plugin.focus = "modules-within-suite"
-    mock_session.items = [mock_test_item("mod1::test1")]
-    data = _get_brightest_data(mock_session)
-    assert "current_module_order" in data["data"]
-    # technique: name, Focus: tests-across-modules
-    mock_plugin.focus = "tests-across-modules"
-    data = _get_brightest_data(mock_session)
-    assert "current_test_order" in data["data"]
-    # technique: name, Focus: tests-within-module
-    mock_plugin.focus = "tests-within-module"
-    data = _get_brightest_data(mock_session)
-    assert "current_module_tests" in data["data"]
+    assert "test_case_costs" in data["data"]
+    assert "test_module_costs" in data["data"]
+    assert "test_case_failures" in data["data"]
+    assert "test_module_failures" in data["data"]
+    # check that testcases list is present
+    assert "testcases" in data
+    assert data["testcases"] == ["mod1::test1"]
 
 
 def test_get_brightest_data_structure(mocker, mock_test_item):
@@ -462,6 +454,8 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
     mock_plugin.seed = 42
     mock_plugin.reorderer = mocker.MagicMock()
     mock_plugin.reorderer.get_test_total_duration.return_value = 1.5
+    mock_plugin.reorderer.get_test_outcome.return_value = "passed"
+    mock_plugin.current_session_failures = {}
     mock_session.items = [
         mock_test_item("mod1::test1"),
         mock_test_item("mod2::test2"),
@@ -475,6 +469,11 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
     assert "seed" in data
     assert "data" in data
     assert "testcases" in data
+    # check data structure
+    assert "test_case_costs" in data["data"]
+    assert "test_module_costs" in data["data"]
+    assert "test_case_failures" in data["data"]
+    assert "test_module_failures" in data["data"]
     # check testcases field
     assert data["testcases"] == ["mod1::test1", "mod2::test2"]
     # check values
@@ -495,6 +494,18 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
     mock_plugin.focus = "tests-across-modules"
     mock_plugin.direction = None
     mock_plugin.seed = 123
+    mock_plugin.historical_brightest_data = [
+        {
+            "runcount": 1,
+            "timestamp": "2025-01-01T00:00:00.000000",
+            "technique": "cost",
+            "focus": "tests-across-modules",
+            "direction": "ascending",
+            "seed": None,
+            "data": {},
+            "testcases": [],
+        }
+    ]
 
     # mock existing data with one run
     existing_data = {
@@ -567,6 +578,9 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
                 "testcases": [],
             }
         )
+
+    # set the historical data in the mock plugin
+    mock_plugin.historical_brightest_data = existing_runs.copy()
 
     existing_data = {"tests": [], "brightest": existing_runs}
 

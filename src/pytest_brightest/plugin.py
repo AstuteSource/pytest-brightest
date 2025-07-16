@@ -16,27 +16,19 @@ from .constants import (
     ASCENDING,
     BRIGHTEST,
     COST,
-    CURRENT_MODULE_COSTS,
-    CURRENT_MODULE_FAILURE_COUNTS,
-    CURRENT_MODULE_ORDER,
-    CURRENT_MODULE_TESTS,
-    CURRENT_TEST_COSTS,
-    CURRENT_TEST_ORDER,
     DATA,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DESCENDING,
     DIRECTION,
     EMPTY_STRING,
+    ERROR,
+    FAILED,
     FAILURE,
     FLASHLIGHT_PREFIX,
     FOCUS,
     HIGH_BRIGHTNESS_PREFIX,
     MAX_RUNS,
-    MODULE_COSTS,
-    MODULE_FAILURE_COUNTS,
-    MODULE_ORDER,
-    MODULE_TESTS,
     MODULES_WITHIN_SUITE,
     NAME,
     NEWLINE,
@@ -46,8 +38,10 @@ from .constants import (
     SEED,
     SHUFFLE,
     TECHNIQUE,
-    TEST_COSTS,
-    TEST_ORDER,
+    TEST_CASE_COSTS,
+    TEST_CASE_FAILURES,
+    TEST_MODULE_COSTS,
+    TEST_MODULE_FAILURES,
     TESTCASES,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
@@ -81,6 +75,7 @@ class BrightestPlugin:
         self.technique: Optional[str] = None
         self.focus: Optional[str] = None
         self.direction: Optional[str] = None
+        self.historical_brightest_data: List[Dict[str, Any]] = []
 
     def configure(self, config: Config) -> None:
         """Configure the plugin based on command-line options."""
@@ -92,6 +87,8 @@ class BrightestPlugin:
         # configure the name of the file that will contain the
         # JSON file that contains the pytest-json-report data
         self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
+        # preserve historical brightest data before pytest-json-report overwrites it
+        self._preserve_historical_brightest_data()
         # always set up JSON reporting when brightest is enabled;
         # this ensures generation of test execution data for future reordering
         json_setup_success = setup_json_report_plugin(config)
@@ -177,6 +174,28 @@ class BrightestPlugin:
         """Store the session items for later use in data collection."""
         self.session_items = items.copy()
 
+    def _preserve_historical_brightest_data(self) -> None:
+        """Preserve historical brightest data before pytest-json-report overwrites it."""
+        if not self.brightest_json_file:
+            return
+        json_file = Path(self.brightest_json_file)
+        if json_file.exists():
+            try:
+                with json_file.open("r", encoding=DEFAULT_FILE_ENCODING) as f:
+                    data = json.load(f)
+                    # extract existing brightest data
+                    if BRIGHTEST in data:
+                        if isinstance(data[BRIGHTEST], list):
+                            self.historical_brightest_data = data[
+                                BRIGHTEST
+                            ].copy()
+                        else:
+                            # handle legacy format
+                            self.historical_brightest_data = [data[BRIGHTEST]]
+            except (json.JSONDecodeError, FileNotFoundError):
+                # if there's an error reading the file, start with empty history
+                self.historical_brightest_data = []
+
 
 # create a global plugin instance that can be used by the pytest hooks
 _plugin = BrightestPlugin()
@@ -257,7 +276,7 @@ def pytest_runtest_logreport(report: TestReport) -> None:
         _plugin.record_test_failure(report.nodeid)
 
 
-def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, PLR0915
+def _get_brightest_data(session: Session) -> Dict[str, Any]:
     """Collect brightest data for the JSON report."""
     brightest_data: Dict[str, Any] = {
         TIMESTAMP: datetime.now().isoformat(),
@@ -270,6 +289,57 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
             getattr(item, NODEID, EMPTY_STRING) for item in session.items
         ],
     }
+    # collect test case costs and module costs
+    test_case_costs: Dict[str, float] = {}
+    test_module_costs: Dict[str, float] = {}
+    test_case_failures: Dict[str, int] = {}
+    test_module_failures: Dict[str, int] = {}
+    # if reorderer is available, get test performance data
+    if _plugin.reorderer:
+        # reload the test data to get the current session's performance data
+        # that was just written by pytest-json-report
+        _plugin.reorderer.load_test_data()
+        # collect cost data for each test case
+        for item in session.items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                cost = _plugin.reorderer.get_test_total_duration(item)
+                test_case_costs[nodeid] = cost
+                # aggregate module costs
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                test_module_costs[module_path] = (
+                    test_module_costs.get(module_path, 0.0) + cost
+                )
+                # collect failure data
+                outcome = _plugin.reorderer.get_test_outcome(item)
+                failure_count = 1 if outcome in [FAILED, ERROR] else 0
+                test_case_failures[nodeid] = failure_count
+                # aggregate module failures
+                test_module_failures[module_path] = (
+                    test_module_failures.get(module_path, 0) + failure_count
+                )
+    else:
+        # if no reorderer, set costs and failures to 0
+        for item in session.items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                test_case_costs[nodeid] = 0.0
+                test_case_failures[nodeid] = 0
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                test_module_costs[module_path] = test_module_costs.get(
+                    module_path, 0.0
+                )
+                test_module_failures[module_path] = test_module_failures.get(
+                    module_path, 0
+                )
+    # add current session failure data if available
+    if _plugin.current_session_failures:
+        test_module_failures.update(_plugin.current_session_failures)
+    # store the data in the target structure
+    brightest_data[DATA][TEST_CASE_COSTS] = test_case_costs
+    brightest_data[DATA][TEST_MODULE_COSTS] = test_module_costs
+    brightest_data[DATA][TEST_CASE_FAILURES] = test_case_failures
+    brightest_data[DATA][TEST_MODULE_FAILURES] = test_module_failures
     # add prior data that was used for reordering this session
     if (
         _plugin.reorderer
@@ -280,76 +350,10 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
         prior_data = _plugin.reorderer.get_prior_data_for_reordering(
             _plugin.session_items, _plugin.technique, _plugin.focus
         )
-        brightest_data[DATA].update(prior_data)
-    # add current session data
-    if _plugin.technique == COST and _plugin.reorderer:
-        # reload the test data to get the current session's performance data
-        # that was just written by pytest-json-report
-        _plugin.reorderer.load_test_data()
-        current_module_costs: Dict[str, float] = {}
-        current_test_costs: Dict[str, float] = {}
-        for item in session.items:
-            nodeid = getattr(item, NODEID, "")
-            if nodeid:
-                cost = _plugin.reorderer.get_test_total_duration(item)
-                module_path = nodeid.split(NODEID_SEPARATOR)[0]
-                current_module_costs[module_path] = (
-                    current_module_costs.get(module_path, 0.0) + cost
-                )
-                current_test_costs[nodeid] = cost
-        if _plugin.focus == MODULES_WITHIN_SUITE:
-            brightest_data[DATA][CURRENT_MODULE_COSTS] = current_module_costs
-        elif _plugin.focus == TESTS_WITHIN_MODULE:
-            brightest_data[DATA][CURRENT_MODULE_COSTS] = current_module_costs
-            brightest_data[DATA][CURRENT_TEST_COSTS] = current_test_costs
-        elif _plugin.focus == TESTS_ACROSS_MODULES:
-            brightest_data[DATA][CURRENT_TEST_COSTS] = current_test_costs
-        # maintain legacy keys for backward compatibility
-        brightest_data[DATA][MODULE_COSTS] = current_module_costs
-        brightest_data[DATA][TEST_COSTS] = current_test_costs
-    elif _plugin.technique == NAME:
-        if _plugin.focus == MODULES_WITHIN_SUITE:
-            current_module_order = []
-            for item in session.items:
-                nodeid = getattr(item, NODEID, EMPTY_STRING)
-                if nodeid:
-                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
-                    if module_path not in current_module_order:
-                        current_module_order.append(module_path)
-            brightest_data[DATA][CURRENT_MODULE_ORDER] = current_module_order
-            # maintain legacy key for backward compatibility
-            brightest_data[DATA][MODULE_ORDER] = current_module_order
-        elif _plugin.focus == TESTS_ACROSS_MODULES:
-            current_test_order = [
-                getattr(item, NODEID, EMPTY_STRING) for item in session.items
-            ]
-            brightest_data[DATA][CURRENT_TEST_ORDER] = current_test_order
-            # maintain legacy key for backward compatibility
-            brightest_data[DATA][TEST_ORDER] = current_test_order
-        elif _plugin.focus == TESTS_WITHIN_MODULE:
-            current_module_tests: Dict[str, List[str]] = {}
-            for item in session.items:
-                nodeid = getattr(item, NODEID, EMPTY_STRING)
-                if nodeid:
-                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
-                    if module_path not in current_module_tests:
-                        current_module_tests[module_path] = []
-                    current_module_tests[module_path].append(nodeid)
-            brightest_data[DATA][CURRENT_MODULE_TESTS] = current_module_tests
-            # maintain legacy key for backward compatibility
-            brightest_data[DATA][MODULE_TESTS] = current_module_tests
-    elif (
-        _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE
-    ):
-        # save the current session failure counts for future use
-        if _plugin.current_session_failures:
-            brightest_data[DATA][CURRENT_MODULE_FAILURE_COUNTS] = (
-                _plugin.current_session_failures
-            )
-            # maintain legacy key for backward compatibility
-            brightest_data[DATA][MODULE_FAILURE_COUNTS] = (
-                _plugin.current_session_failures
-            )
+        # merge prior data with current data, but don't overwrite the new structure
+        for key, value in prior_data.items():
+            if key not in brightest_data[DATA]:
+                brightest_data[DATA][key] = value
     return brightest_data
 
 
@@ -366,14 +370,9 @@ def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
                 data = json.load(f)
                 # get the new brightest data for this run
                 new_run_data = _get_brightest_data(session)
-                # initialize or get existing brightest data
-                if BRIGHTEST not in data:
-                    data[BRIGHTEST] = []
-                elif not isinstance(data[BRIGHTEST], list):
-                    # handle legacy format where brightest was a single object
-                    data[BRIGHTEST] = [data[BRIGHTEST]]
+                # restore historical data and add the new run
+                current_runs = _plugin.historical_brightest_data.copy()
                 # add runcount to the new data
-                current_runs = data[BRIGHTEST]
                 if current_runs:
                     # get the highest runcount and increment by 1
                     max_runcount = max(

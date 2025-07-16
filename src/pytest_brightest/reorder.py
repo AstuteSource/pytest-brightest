@@ -22,17 +22,15 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
     JSON_REPORT_FILE,
+    MODULE_COSTS,
+    MODULE_FAILURE_COUNTS,
+    MODULE_ORDER,
+    MODULE_TESTS,
     MODULES_WITHIN_SUITE,
     NAME,
     NODEID,
     NODEID_SEPARATOR,
     OUTCOME,
-    PRIOR_MODULE_COSTS,
-    PRIOR_MODULE_FAILURE_COUNTS,
-    PRIOR_MODULE_ORDER,
-    PRIOR_MODULE_TESTS,
-    PRIOR_TEST_COSTS,
-    PRIOR_TEST_ORDER,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
     REPORT_JSON,
@@ -40,6 +38,8 @@ from .constants import (
     SETUP_DURATION,
     TEARDOWN,
     TEARDOWN_DURATION,
+    TEST_COSTS,
+    TEST_ORDER,
     TESTS,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
@@ -201,18 +201,18 @@ class ReordererOfTests:
                 nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     cost = self.get_test_total_duration(item)
-                    module_path = nodeid.split(NODEID)[0]
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     module_costs[module_path] = (
                         module_costs.get(module_path, 0.0) + cost
                     )
                     test_costs[nodeid] = cost
             if focus == MODULES_WITHIN_SUITE:
-                prior_data[PRIOR_MODULE_COSTS] = module_costs
+                prior_data[MODULE_COSTS] = module_costs
             elif focus == TESTS_WITHIN_MODULE:
-                prior_data[PRIOR_MODULE_COSTS] = module_costs
-                prior_data[PRIOR_TEST_COSTS] = test_costs
+                prior_data[MODULE_COSTS] = module_costs
+                prior_data[TEST_COSTS] = test_costs
             elif focus == TESTS_ACROSS_MODULES:
-                prior_data[PRIOR_TEST_COSTS] = test_costs
+                prior_data[TEST_COSTS] = test_costs
         elif technique == NAME:
             if focus == MODULES_WITHIN_SUITE:
                 module_order = []
@@ -222,9 +222,9 @@ class ReordererOfTests:
                         module_path = nodeid.split("::")[0]
                         if module_path not in module_order:
                             module_order.append(module_path)
-                prior_data[PRIOR_MODULE_ORDER] = module_order
+                prior_data[MODULE_ORDER] = module_order
             elif focus == TESTS_ACROSS_MODULES:
-                prior_data[PRIOR_TEST_ORDER] = [
+                prior_data[TEST_ORDER] = [
                     getattr(item, NODEID, "") for item in items
                 ]
             elif focus == TESTS_WITHIN_MODULE:
@@ -236,7 +236,7 @@ class ReordererOfTests:
                         if module_path not in module_tests:
                             module_tests[module_path] = []
                         module_tests[module_path].append(nodeid)
-                prior_data[PRIOR_MODULE_TESTS] = module_tests
+                prior_data[MODULE_TESTS] = module_tests
         elif technique == FAILURE:
             module_failure_counts: Dict[str, int] = {}
             for item in items:
@@ -248,7 +248,7 @@ class ReordererOfTests:
                     if self.get_test_outcome(item) in [FAILED, ERROR]:
                         module_failure_counts[module_path] += 1
             if focus == MODULES_WITHIN_SUITE:
-                prior_data[PRIOR_MODULE_FAILURE_COUNTS] = module_failure_counts
+                prior_data[MODULE_FAILURE_COUNTS] = module_failure_counts
         return prior_data
 
     def reorder_modules_by_cost(
