@@ -324,7 +324,6 @@ class TestHooks:
         mock_console_print = mocker.patch(
             "pytest_brightest.plugin.console.print"
         )
-
         mock_file_handle = mocker.MagicMock()
         mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
         mocker.patch(
@@ -335,7 +334,6 @@ class TestHooks:
         mock_plugin.reorderer.get_test_total_duration.return_value = (
             0.5  # example return value
         )
-
         mock_session = mocker.MagicMock()
         mock_session.items = []
         pytest_sessionfinish(mock_session, 0)
@@ -387,7 +385,6 @@ class TestHooks:
         mocker.patch("json.load", return_value={"tests": []})
         mock_json_dump = mocker.patch("json.dump")
         mocker.patch("pytest_brightest.plugin.console.print")
-
         mock_file_handle = mocker.MagicMock()
         mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
         mocker.patch(
@@ -485,6 +482,7 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
 
 def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
     """Test that runcount increments correctly across multiple runs."""
+    _ = mock_config
     mock_plugin = mocker.patch(
         "pytest_brightest.plugin._plugin", autospec=True
     )
@@ -506,7 +504,6 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
             "testcases": [],
         }
     ]
-
     # mock existing data with one run
     existing_data = {
         "tests": [],
@@ -523,7 +520,6 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
             }
         ],
     }
-
     mocker.patch("pathlib.Path.exists", return_value=True)
     mocker.patch("json.load", return_value=existing_data)
     mock_json_dump = mocker.patch("json.dump")
@@ -534,16 +530,12 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
     mocker.patch(
         "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
     )
-
     mock_session = mocker.MagicMock()
     mock_session.items = []
-
     pytest_sessionfinish(mock_session, 0)
-
     mock_json_dump.assert_called_once()
-    args, kwargs = mock_json_dump.call_args
+    args, _ = mock_json_dump.call_args
     dumped_data = args[0]
-
     # check that we have 2 runs now
     assert len(dumped_data["brightest"]) == 2
     # check that runcount incremented
@@ -553,6 +545,7 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
 
 def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
     """Test that maximum 25 runs are kept in the brightest section."""
+    _ = mock_config
     mock_plugin = mocker.patch(
         "pytest_brightest.plugin._plugin", autospec=True
     )
@@ -578,32 +571,24 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
                 "testcases": [],
             }
         )
-
     # set the historical data in the mock plugin
     mock_plugin.historical_brightest_data = existing_runs.copy()
-
     existing_data = {"tests": [], "brightest": existing_runs}
-
     mocker.patch("pathlib.Path.exists", return_value=True)
     mocker.patch("json.load", return_value=existing_data)
     mock_json_dump = mocker.patch("json.dump")
     mocker.patch("pytest_brightest.plugin.console.print")
-
     mock_file_handle = mocker.MagicMock()
     mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
     mocker.patch(
         "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
     )
-
     mock_session = mocker.MagicMock()
     mock_session.items = []
-
     pytest_sessionfinish(mock_session, 0)
-
     mock_json_dump.assert_called_once()
-    args, kwargs = mock_json_dump.call_args
+    args, _ = mock_json_dump.call_args
     dumped_data = args[0]
-
     # check that we still have only 25 runs
     assert len(dumped_data["brightest"]) == 25
     # check that the oldest run was removed and new run was added
