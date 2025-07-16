@@ -22,7 +22,6 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
     JSON_REPORT_FILE,
-    MODULE_COSTS,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
     MODULE_TESTS,
@@ -38,7 +37,9 @@ from .constants import (
     SETUP_DURATION,
     TEARDOWN,
     TEARDOWN_DURATION,
-    TEST_COSTS,
+    # TEST_COSTS,
+    TEST_CASE_COSTS,
+    TEST_MODULE_COSTS,
     TEST_ORDER,
     TESTS,
     TESTS_ACROSS_MODULES,
@@ -207,12 +208,12 @@ class ReordererOfTests:
                     )
                     test_costs[nodeid] = cost
             if focus == MODULES_WITHIN_SUITE:
-                prior_data[MODULE_COSTS] = module_costs
+                prior_data[TEST_MODULE_COSTS] = module_costs
             elif focus == TESTS_WITHIN_MODULE:
-                prior_data[MODULE_COSTS] = module_costs
-                prior_data[TEST_COSTS] = test_costs
+                prior_data[TEST_MODULE_COSTS] = module_costs
+                prior_data[TEST_CASE_COSTS] = test_costs
             elif focus == TESTS_ACROSS_MODULES:
-                prior_data[TEST_COSTS] = test_costs
+                prior_data[TEST_CASE_COSTS] = test_costs
         elif technique == NAME:
             if focus == MODULES_WITHIN_SUITE:
                 module_order = []

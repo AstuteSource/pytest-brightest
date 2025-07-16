@@ -381,6 +381,9 @@ class TestHooks:
             "module_b.py::test_b3": "failed",
             "module_c.py::test_c1": "passed",
         }.get(item.nodeid, "passed")
+        mock_plugin.reorderer.get_test_total_duration.return_value = (
+            0.1  # example return value
+        )
         mocker.patch("pathlib.Path.exists", return_value=True)
         mocker.patch("json.load", return_value={"tests": []})
         mock_json_dump = mocker.patch("json.dump")
