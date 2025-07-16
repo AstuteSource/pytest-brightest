@@ -3,7 +3,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from _pytest.config import Config  # type: ignore
 from _pytest.config.argparsing import Parser  # type: ignore
@@ -276,6 +276,24 @@ def pytest_runtest_logreport(report: TestReport) -> None:
         _plugin.record_test_failure(report.nodeid)
 
 
+# def _sort_dict_by_value(d):
+#     """Create a new dictionary with keys sorted by their values in ascending order."""
+#     sorted_dictionary = dict(sorted(d.items(), key=lambda item: item[1]))
+#     console.print(sorted_dictionary)
+#     return sorted_dictionary
+
+
+def _sort_dict_by_value(
+    data_dict: Mapping[str, Union[int, float]], order: str
+) -> Mapping[str, Union[int, float]]:
+    """Create a new dictionary with keys sorted by their values in ascending or descending order."""
+    reverse = order == DESCENDING
+    sorted_dictionary = dict(
+        sorted(data_dict.items(), key=lambda item: item[1], reverse=reverse)
+    )
+    return sorted_dictionary
+
+
 def _get_brightest_data(session: Session) -> Dict[str, Any]:
     """Collect brightest data for the JSON report."""
     brightest_data: Dict[str, Any] = {
@@ -335,11 +353,21 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
     # add current session failure data if available
     if _plugin.current_session_failures:
         test_module_failures.update(_plugin.current_session_failures)
-    # store the data in the target structure
-    brightest_data[DATA][TEST_CASE_COSTS] = test_case_costs
-    brightest_data[DATA][TEST_MODULE_COSTS] = test_module_costs
-    brightest_data[DATA][TEST_CASE_FAILURES] = test_case_failures
-    brightest_data[DATA][TEST_MODULE_FAILURES] = test_module_failures
+    # store the data in the target structure, placing it in sorted
+    # order so that it is easier for the person who is inspecting
+    # the logging output in the JSON file to understand the data
+    brightest_data[DATA][TEST_CASE_COSTS] = _sort_dict_by_value(
+        test_case_costs, str(_plugin.direction)
+    )
+    brightest_data[DATA][TEST_MODULE_COSTS] = _sort_dict_by_value(
+        test_module_costs, str(_plugin.direction)
+    )
+    brightest_data[DATA][TEST_CASE_FAILURES] = _sort_dict_by_value(
+        test_case_failures, str(_plugin.direction)
+    )
+    brightest_data[DATA][TEST_MODULE_FAILURES] = _sort_dict_by_value(
+        test_module_failures, str(_plugin.direction)
+    )
     # add prior data that was used for reordering this session
     if (
         _plugin.reorderer
