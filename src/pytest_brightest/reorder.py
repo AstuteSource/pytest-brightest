@@ -37,7 +37,6 @@ from .constants import (
     SETUP_DURATION,
     TEARDOWN,
     TEARDOWN_DURATION,
-    # TEST_COSTS,
     TEST_CASE_COSTS,
     TEST_MODULE_COSTS,
     TEST_ORDER,
