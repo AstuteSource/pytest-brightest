@@ -169,7 +169,43 @@ contiguous region of the file.
     - The reason for asking the code to be generated in this fashion is that it ensures
     that the line numbers in the code blocks match the line numbers in the file.
 
-## Refactoring Instructions
+## Current Refactoring Instructions
+
+1) The `pytest-brightest` plugin does not yet have a good way to save data in
+the JSON report file. The data that it saves it not consistent and not suitable
+for checking to confirm whether or not it is working correctly.
+
+2) The refactored version of the plugin should save the following data in
+the `brightest` section of the JSON report files in a list of entries:
+
+    - `runcount`: The identifier for the run of the test suite.
+    - `timestamp`: The timestamp when the test suite was run.
+    - `technique`: The technique used for reordering the tests.
+    - `focus`: The focus of the reordering.
+    - `direction`: The direction of the reordering.
+    - `seed`: The seed for the random number generator used for shuffling.
+    - `data`: All calculated data about the test cases, test modules, etc.
+    - `testcases`: A list of test `nodeids` in the order that the plugin
+    executed them decided to run them according to the current configuration.
+
+If one of these attributes is not needed for a specific configuration of the
+plugin, it should still still be recorded, but with the value `null`.
+
+The purpose of the `runcount` parameter is to allow the plugin to save up to a
+maximum number of runs in the JSON report. For now, the tool can have a
+hard-coded constant of `25` for the maximum number of runs that it will store in
+the `brightest` section of the JSON report file. This means that the `runcount`
+will start at `1` and increment by `1` for each run of the test suite with the
+plugin being enabled. Then, all the data will be stored for that run and can be
+used in subsequent runs of the test suite when the plugin is enabled.
+
+3) The entire refactoring should not break the existing implementation. It
+should all of this logging code so that the plugin's behavior is easier to check
+and understand. If there are any inconsistencies in the description of the tool,
+then the agent implementing this refactoring should check in with the designer
+of the pytest-brightest plugin to clarify details.
+
+## Finished Refactoring Instructions
 
 1) Even though the command-line interface for the pytest-brightest plugin is
 acceptable and there is evidence that it works when installed through an
