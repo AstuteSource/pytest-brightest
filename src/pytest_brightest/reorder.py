@@ -94,7 +94,15 @@ class ReordererOfTests:
                 # load the JSON data from the file
                 data = json.load(file)
                 # store the brightest data if it exists for historical information
-                self.brightest_data = data.get(BRIGHTEST, {})
+                brightest_raw = data.get(BRIGHTEST, {})
+                if isinstance(brightest_raw, list):
+                    # new format: list of runs
+                    self.brightest_data = (
+                        brightest_raw[-1] if brightest_raw else {}
+                    )
+                else:
+                    # legacy format: single object
+                    self.brightest_data = brightest_raw
                 # there is data about test cases
                 # that were executed in the list of test information
                 if TESTS in data:

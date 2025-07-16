@@ -405,7 +405,10 @@ class TestHooks:
         args, kwargs = mock_json_dump.call_args
         _ = kwargs
         dumped_data = args[0]
-        assert dumped_data["brightest"]["module_failure_counts"] == {
+        assert isinstance(dumped_data["brightest"], list)
+        assert len(dumped_data["brightest"]) == 1
+        run_data = dumped_data["brightest"][0]
+        assert run_data["data"]["module_failure_counts"] == {
             "module_a.py": 1,
             "module_b.py": 2,
             "module_c.py": 0,
@@ -425,22 +428,172 @@ def test_get_brightest_data_all_branches(mocker, mock_test_item):
     mock_plugin.reorderer.get_test_total_duration.return_value = 1.0
     mock_session.items = [mock_test_item("mod1::test1")]
     data = _get_brightest_data(mock_session)
-    assert "current_module_costs" in data
+    assert "data" in data
+    assert "current_module_costs" in data["data"]
     # technique: cost, Focus: tests-within-module
     mock_plugin.focus = "tests-within-module"
     data = _get_brightest_data(mock_session)
-    assert "current_test_costs" in data
+    assert "current_test_costs" in data["data"]
     # technique: name, Focus: modules-within-suite
     mock_plugin.technique = "name"
     mock_plugin.focus = "modules-within-suite"
     mock_session.items = [mock_test_item("mod1::test1")]
     data = _get_brightest_data(mock_session)
-    assert "current_module_order" in data
+    assert "current_module_order" in data["data"]
     # technique: name, Focus: tests-across-modules
     mock_plugin.focus = "tests-across-modules"
     data = _get_brightest_data(mock_session)
-    assert "current_test_order" in data
+    assert "current_test_order" in data["data"]
     # technique: name, Focus: tests-within-module
     mock_plugin.focus = "tests-within-module"
     data = _get_brightest_data(mock_session)
-    assert "current_module_tests" in data
+    assert "current_module_tests" in data["data"]
+
+
+def test_get_brightest_data_structure(mocker, mock_test_item):
+    """Test that _get_brightest_data creates proper structure with all required fields."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_session = mocker.MagicMock()
+    mock_plugin.technique = "cost"
+    mock_plugin.focus = "tests-across-modules"
+    mock_plugin.direction = "ascending"
+    mock_plugin.seed = 42
+    mock_plugin.reorderer = mocker.MagicMock()
+    mock_plugin.reorderer.get_test_total_duration.return_value = 1.5
+    mock_session.items = [
+        mock_test_item("mod1::test1"),
+        mock_test_item("mod2::test2"),
+    ]
+    data = _get_brightest_data(mock_session)
+    # check required fields
+    assert "timestamp" in data
+    assert "technique" in data
+    assert "focus" in data
+    assert "direction" in data
+    assert "seed" in data
+    assert "data" in data
+    assert "testcases" in data
+    # check testcases field
+    assert data["testcases"] == ["mod1::test1", "mod2::test2"]
+    # check values
+    assert data["technique"] == "cost"
+    assert data["focus"] == "tests-across-modules"
+    assert data["direction"] == "ascending"
+    assert data["seed"] == 42
+
+
+def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
+    """Test that runcount increments correctly across multiple runs."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.brightest_json_file = "test.json"
+    mock_plugin.technique = "shuffle"
+    mock_plugin.focus = "tests-across-modules"
+    mock_plugin.direction = None
+    mock_plugin.seed = 123
+
+    # mock existing data with one run
+    existing_data = {
+        "tests": [],
+        "brightest": [
+            {
+                "runcount": 1,
+                "timestamp": "2025-01-01T00:00:00.000000",
+                "technique": "cost",
+                "focus": "tests-across-modules",
+                "direction": "ascending",
+                "seed": None,
+                "data": {},
+                "testcases": [],
+            }
+        ],
+    }
+
+    mocker.patch("pathlib.Path.exists", return_value=True)
+    mocker.patch("json.load", return_value=existing_data)
+    mock_json_dump = mocker.patch("json.dump")
+    mocker.patch("pytest_brightest.plugin.console.print")
+
+    mock_file_handle = mocker.MagicMock()
+    mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
+    mocker.patch(
+        "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
+    )
+
+    mock_session = mocker.MagicMock()
+    mock_session.items = []
+
+    pytest_sessionfinish(mock_session, 0)
+
+    mock_json_dump.assert_called_once()
+    args, kwargs = mock_json_dump.call_args
+    dumped_data = args[0]
+
+    # check that we have 2 runs now
+    assert len(dumped_data["brightest"]) == 2
+    # check that runcount incremented
+    assert dumped_data["brightest"][0]["runcount"] == 1
+    assert dumped_data["brightest"][1]["runcount"] == 2
+
+
+def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
+    """Test that maximum 25 runs are kept in the brightest section."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.brightest_json_file = "test.json"
+    mock_plugin.technique = "shuffle"
+    mock_plugin.focus = "tests-across-modules"
+    mock_plugin.direction = None
+    mock_plugin.seed = 123
+
+    # create existing data with 25 runs
+    existing_runs = []
+    for i in range(25):
+        existing_runs.append(
+            {
+                "runcount": i + 1,
+                "timestamp": f"2025-01-01T00:00:0{i:02d}.000000",
+                "technique": "cost",
+                "focus": "tests-across-modules",
+                "direction": "ascending",
+                "seed": None,
+                "data": {},
+                "testcases": [],
+            }
+        )
+
+    existing_data = {"tests": [], "brightest": existing_runs}
+
+    mocker.patch("pathlib.Path.exists", return_value=True)
+    mocker.patch("json.load", return_value=existing_data)
+    mock_json_dump = mocker.patch("json.dump")
+    mocker.patch("pytest_brightest.plugin.console.print")
+
+    mock_file_handle = mocker.MagicMock()
+    mocker.patch("pathlib.Path.open", return_value=mock_file_handle)
+    mocker.patch(
+        "pathlib.Path.stat", return_value=mocker.MagicMock(st_size=100)
+    )
+
+    mock_session = mocker.MagicMock()
+    mock_session.items = []
+
+    pytest_sessionfinish(mock_session, 0)
+
+    mock_json_dump.assert_called_once()
+    args, kwargs = mock_json_dump.call_args
+    dumped_data = args[0]
+
+    # check that we still have only 25 runs
+    assert len(dumped_data["brightest"]) == 25
+    # check that the oldest run was removed and new run was added
+    assert (
+        dumped_data["brightest"][0]["runcount"] == 2
+    )  # first run was removed
+    assert dumped_data["brightest"][-1]["runcount"] == 26  # new run added

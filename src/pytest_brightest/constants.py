@@ -88,3 +88,15 @@ CURRENT_MODULE_TESTS = "current_module_tests"
 # diagnostic message prefixes
 FLASHLIGHT_PREFIX = ":flashlight: pytest-brightest:"
 HIGH_BRIGHTNESS_PREFIX = ":high_brightness: pytest-brightest:"
+
+# define constants for structured data logging
+RUNCOUNT = "runcount"
+DATA = "data"
+TESTCASES = "testcases"
+MAX_RUNS = 25
+
+# define constants for test failure data
+TEST_CASE_COSTS = "test_case_costs"
+TEST_MODULE_COSTS = "test_module_costs"
+TEST_CASE_FAILURES = "test_case_failures"
+TEST_MODULE_FAILURES = "test_module_failures"

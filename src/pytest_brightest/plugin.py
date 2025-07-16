@@ -22,6 +22,7 @@ from .constants import (
     CURRENT_MODULE_TESTS,
     CURRENT_TEST_COSTS,
     CURRENT_TEST_ORDER,
+    DATA,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DESCENDING,
@@ -31,6 +32,7 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     FOCUS,
     HIGH_BRIGHTNESS_PREFIX,
+    MAX_RUNS,
     MODULE_COSTS,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
@@ -40,11 +42,13 @@ from .constants import (
     NEWLINE,
     NODEID,
     NODEID_SEPARATOR,
+    RUNCOUNT,
     SEED,
     SHUFFLE,
     TECHNIQUE,
     TEST_COSTS,
     TEST_ORDER,
+    TESTCASES,
     TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
     TIMESTAMP,
@@ -261,6 +265,10 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
         FOCUS: _plugin.focus,
         DIRECTION: _plugin.direction,
         SEED: _plugin.seed,
+        DATA: {},
+        TESTCASES: [
+            getattr(item, NODEID, EMPTY_STRING) for item in session.items
+        ],
     }
     # add prior data that was used for reordering this session
     if (
@@ -272,7 +280,7 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
         prior_data = _plugin.reorderer.get_prior_data_for_reordering(
             _plugin.session_items, _plugin.technique, _plugin.focus
         )
-        brightest_data.update(prior_data)
+        brightest_data[DATA].update(prior_data)
     # add current session data
     if _plugin.technique == COST and _plugin.reorderer:
         # reload the test data to get the current session's performance data
@@ -290,15 +298,15 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
                 )
                 current_test_costs[nodeid] = cost
         if _plugin.focus == MODULES_WITHIN_SUITE:
-            brightest_data[CURRENT_MODULE_COSTS] = current_module_costs
+            brightest_data[DATA][CURRENT_MODULE_COSTS] = current_module_costs
         elif _plugin.focus == TESTS_WITHIN_MODULE:
-            brightest_data[CURRENT_MODULE_COSTS] = current_module_costs
-            brightest_data[CURRENT_TEST_COSTS] = current_test_costs
+            brightest_data[DATA][CURRENT_MODULE_COSTS] = current_module_costs
+            brightest_data[DATA][CURRENT_TEST_COSTS] = current_test_costs
         elif _plugin.focus == TESTS_ACROSS_MODULES:
-            brightest_data[CURRENT_TEST_COSTS] = current_test_costs
+            brightest_data[DATA][CURRENT_TEST_COSTS] = current_test_costs
         # maintain legacy keys for backward compatibility
-        brightest_data[MODULE_COSTS] = current_module_costs
-        brightest_data[TEST_COSTS] = current_test_costs
+        brightest_data[DATA][MODULE_COSTS] = current_module_costs
+        brightest_data[DATA][TEST_COSTS] = current_test_costs
     elif _plugin.technique == NAME:
         if _plugin.focus == MODULES_WITHIN_SUITE:
             current_module_order = []
@@ -308,16 +316,16 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
                     module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in current_module_order:
                         current_module_order.append(module_path)
-            brightest_data[CURRENT_MODULE_ORDER] = current_module_order
+            brightest_data[DATA][CURRENT_MODULE_ORDER] = current_module_order
             # maintain legacy key for backward compatibility
-            brightest_data[MODULE_ORDER] = current_module_order
+            brightest_data[DATA][MODULE_ORDER] = current_module_order
         elif _plugin.focus == TESTS_ACROSS_MODULES:
             current_test_order = [
                 getattr(item, NODEID, EMPTY_STRING) for item in session.items
             ]
-            brightest_data[CURRENT_TEST_ORDER] = current_test_order
+            brightest_data[DATA][CURRENT_TEST_ORDER] = current_test_order
             # maintain legacy key for backward compatibility
-            brightest_data[TEST_ORDER] = current_test_order
+            brightest_data[DATA][TEST_ORDER] = current_test_order
         elif _plugin.focus == TESTS_WITHIN_MODULE:
             current_module_tests: Dict[str, List[str]] = {}
             for item in session.items:
@@ -327,19 +335,19 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:  # noqa: PLR0912, P
                     if module_path not in current_module_tests:
                         current_module_tests[module_path] = []
                     current_module_tests[module_path].append(nodeid)
-            brightest_data[CURRENT_MODULE_TESTS] = current_module_tests
+            brightest_data[DATA][CURRENT_MODULE_TESTS] = current_module_tests
             # maintain legacy key for backward compatibility
-            brightest_data[MODULE_TESTS] = current_module_tests
+            brightest_data[DATA][MODULE_TESTS] = current_module_tests
     elif (
         _plugin.technique == FAILURE and _plugin.focus == MODULES_WITHIN_SUITE
     ):
         # save the current session failure counts for future use
         if _plugin.current_session_failures:
-            brightest_data[CURRENT_MODULE_FAILURE_COUNTS] = (
+            brightest_data[DATA][CURRENT_MODULE_FAILURE_COUNTS] = (
                 _plugin.current_session_failures
             )
             # maintain legacy key for backward compatibility
-            brightest_data[MODULE_FAILURE_COUNTS] = (
+            brightest_data[DATA][MODULE_FAILURE_COUNTS] = (
                 _plugin.current_session_failures
             )
     return brightest_data
@@ -356,7 +364,31 @@ def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
         if json_file.exists():
             with json_file.open("r+", encoding=DEFAULT_FILE_ENCODING) as f:
                 data = json.load(f)
-                data[BRIGHTEST] = _get_brightest_data(session)
+                # get the new brightest data for this run
+                new_run_data = _get_brightest_data(session)
+                # initialize or get existing brightest data
+                if BRIGHTEST not in data:
+                    data[BRIGHTEST] = []
+                elif not isinstance(data[BRIGHTEST], list):
+                    # handle legacy format where brightest was a single object
+                    data[BRIGHTEST] = [data[BRIGHTEST]]
+                # add runcount to the new data
+                current_runs = data[BRIGHTEST]
+                if current_runs:
+                    # get the highest runcount and increment by 1
+                    max_runcount = max(
+                        run.get(RUNCOUNT, 0) for run in current_runs
+                    )
+                    new_run_data[RUNCOUNT] = max_runcount + 1
+                else:
+                    new_run_data[RUNCOUNT] = 1
+                # add the new run data
+                current_runs.append(new_run_data)
+                # keep only the most recent MAX_RUNS runs
+                if len(current_runs) > MAX_RUNS:
+                    current_runs[:] = current_runs[-MAX_RUNS:]
+                # update the data
+                data[BRIGHTEST] = current_runs
                 f.seek(0)
                 json.dump(data, f, indent=4)
                 f.truncate()
