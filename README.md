@@ -9,6 +9,7 @@
 [![Coverage](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=coverage&query=%24.totals.percent_covered_display&suffix=%25&url=https%3A//raw.githubusercontent.com/wiki/AstuteSource/pytest-brightest/coverage.json)](https://github.com/AstuteSource/pytest-brightest)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pytest-brightest)
 ![PyPI - Version](https://img.shields.io/pypi/v/pytest-brightest?logoColor=blue&color=blue)
+[![PyPI Downloads](https://static.pepy.tech/badge/pytest-brightest)](https://pepy.tech/projects/pytest-brightest)
 [![Maintenance](https://img.shields.io/badge/maintained%3F-Yes-blue.svg)](https://github.com/AstuteSource/pytest-brightest/graphs/commit-activity)
 [![License LGPL v3](https://img.shields.io/badge/license-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
