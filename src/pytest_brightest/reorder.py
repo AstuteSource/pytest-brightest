@@ -41,8 +41,9 @@ from .constants import (
     TEST_MODULE_COSTS,
     TEST_ORDER,
     TESTS,
-    TESTS_ACROSS_MODULES,
+    # TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
+    TESTS_WITHIN_SUITE,
     TOTAL_DURATION,
     UNKNOWN,
     ZERO_COST,
@@ -211,7 +212,7 @@ class ReordererOfTests:
             elif focus == TESTS_WITHIN_MODULE:
                 prior_data[TEST_MODULE_COSTS] = module_costs
                 prior_data[TEST_CASE_COSTS] = test_costs
-            elif focus == TESTS_ACROSS_MODULES:
+            elif focus == TESTS_WITHIN_SUITE:
                 prior_data[TEST_CASE_COSTS] = test_costs
         elif technique == NAME:
             if focus == MODULES_WITHIN_SUITE:
@@ -223,7 +224,7 @@ class ReordererOfTests:
                         if module_path not in module_order:
                             module_order.append(module_path)
                 prior_data[MODULE_ORDER] = module_order
-            elif focus == TESTS_ACROSS_MODULES:
+            elif focus == TESTS_WITHIN_SUITE:
                 prior_data[TEST_ORDER] = [
                     getattr(item, NODEID, "") for item in items
                 ]
@@ -428,7 +429,8 @@ class ReordererOfTests:
         elif focus == TESTS_WITHIN_MODULE:
             self.reorder_tests_within_module(items, reorder_by, ascending)
         # reorder the tests across all modules in the suite
-        elif focus == TESTS_ACROSS_MODULES:
+        # elif focus == TESTS_ACROSS_MODULES:
+        elif focus == TESTS_WITHIN_SUITE:
             self.reorder_tests_across_modules(items, reorder_by, ascending)
 
     def reorder_tests_across_modules(
