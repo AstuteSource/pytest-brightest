@@ -119,4 +119,4 @@ All test cases should follow these standards:
    you completed, how you completed them, the challenges you faced, how you
    overcame them, and the rules that you followed during completion of the tasks.
 
-## Additional Notes
+## Additional Notes for the Gemini Agent
