@@ -95,6 +95,17 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
         items, "failure", "modules-within-suite"
     )
     assert "module_failure_counts" in d
+    # FAILURE, TESTS_WITHIN_MODULE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "failure", "tests-within-module"
+    )
+    assert "module_failure_counts" in d
+    assert "test_case_failures" in d
+    # FAILURE, TESTS_WITHIN_SUITE
+    d = reorderer.get_prior_data_for_reordering(
+        items, "failure", "tests-within-suite"
+    )
+    assert "test_case_failures" in d
 
 
 def test_reorder_tests_in_place_empty():
