@@ -414,11 +414,11 @@ class ReordererOfTests:
         if module_items:
             cheapest_test = module_items[0]
             console.print(
-                f"{INDENT} Cheapest test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+                f"{INDENT} First test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
             )
             most_expensive_test = module_items[-1]
             console.print(
-                f"{INDENT} Most expensive test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+                f"{INDENT} Last test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
             )
 
     def _reorder_module_by_name(
