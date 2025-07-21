@@ -314,3 +314,14 @@ Note: A software agent can add details about their plan in this subsection.
 5. Replace the original `items` list with this new list of repeated items.
 6. Add a new test case in `tests/test_plugin.py` to verify that the `--repeat` functionality works as expected. This test should check that the number of items is correctly multiplied.
 7. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
+
+### Implement --repeat-failed feature (2025-07-21)
+
+1. Add a new command-line argument `--repeat-failed` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times a failed test should be repeated.
+2. In the `BrightestPlugin.configure` method, read the value of the `--repeat-failed` argument and store it in a new instance variable, e.g., `self.repeat_failed_count`.
+3. Implement the `pytest_runtest_protocol` hook to create a custom test execution loop.
+4. Inside the `pytest_runtest_protocol` hook, use `_pytest.runner.runtestprotocol` to run the test and get the reports.
+5. If the test fails, loop and re-run it up to the specified number of times.
+6. Log the final reports.
+7. Add new test cases in `tests/test_plugin.py` to verify that the `--repeat-failed` functionality works as expected. This test should check that a failing test is re-run and that a passing test is not.
+8. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
