@@ -756,16 +756,14 @@ def test_pytest_runtest_protocol_failing_test_eventually_passes(
     mock_hook = mocker.MagicMock()
     mock_config.hook.pytest_runtest_logreport = mock_hook
     item.config = mock_config
-
     result = pytest_runtest_protocol(item, None)
-
     assert result is True
     # should run twice: initial run + one retry
     assert mock_runtestprotocol.call_count == 2
     # should print retry message and success message
     assert mock_console_print.call_count == 2
     mock_console_print.assert_any_call(
-        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 2)"
+        ":flashlight: pytest-brightest: Attempt 2 at repeating failed test test_item"
     )
     mock_console_print.assert_any_call(
         ":flashlight: pytest-brightest: Test test_item passed on retry attempt 2"
@@ -784,40 +782,34 @@ def test_pytest_runtest_protocol_failing_test_exhausts_retries(
     mock_plugin.enabled = True
     mock_plugin.repeat_count = 1
     mock_plugin.repeat_failed_count = 2
-
     # all runs fail
     mock_failing_reports = [
         mocker.MagicMock(when="setup", failed=False),
         mocker.MagicMock(when="call", failed=True),
         mocker.MagicMock(when="teardown", failed=False),
     ]
-
     mock_runtestprotocol = mocker.patch(
         "pytest_brightest.plugin.runtestprotocol",
         return_value=mock_failing_reports,
     )
-
     mock_console_print = mocker.patch("pytest_brightest.plugin.console.print")
-
     item = mock_test_item("test_item")
     # mock the config and hook
     mock_config = mocker.MagicMock()
     mock_hook = mocker.MagicMock()
     mock_config.hook.pytest_runtest_logreport = mock_hook
     item.config = mock_config
-
     result = pytest_runtest_protocol(item, None)
-
     assert result is True
     # should run 3 times: initial run + 2 retries
     assert mock_runtestprotocol.call_count == 3
     # should print retry messages twice
     assert mock_console_print.call_count == 2
     mock_console_print.assert_any_call(
-        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 2)"
+        ":flashlight: pytest-brightest: Attempt 2 at repeating failed test test_item"
     )
     mock_console_print.assert_any_call(
-        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 3)"
+        ":flashlight: pytest-brightest: Attempt 3 at repeating failed test test_item"
     )
     # should log the final failing reports
     assert mock_hook.call_count == 3
