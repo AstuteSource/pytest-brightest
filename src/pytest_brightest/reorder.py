@@ -419,7 +419,8 @@ class ReordererOfTests:
                         key=lambda item: getattr(item, NODEID, EMPTY_STRING),
                         reverse=True,
                     )
-                # display the diagnostic about first and last test in module
+                # display the diagnostic about first and last test in module, using the
+                # same approach for cost, but using a different initial label
                 if module_items[module]:
                     cheapest_test = module_items[module][0]
                     console.print(
