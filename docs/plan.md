@@ -296,4 +296,11 @@ inconsistencies in the description of the tool, then the agent implementing this
 refactoring should check in with the designer of the pytest-brightest plugin to
 clarify details.
 
+## Additional Notes
+
+Note: This section is for any additional notes or context that might be
+useful for future software agents who work on this project.
+
 ## Current Plan
+
+Note: A software agent can add details about their plan in this subsection.
