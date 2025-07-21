@@ -296,4 +296,4 @@ inconsistencies in the description of the tool, then the agent implementing this
 refactoring should check in with the designer of the pytest-brightest plugin to
 clarify details.
 
-## Current Plan for Logging
+## Current Plan
