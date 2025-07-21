@@ -416,18 +416,28 @@ def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
                 f.seek(0)
                 json.dump(data, f, indent=4)
                 f.truncate()
+            # display diagnostic messages to the console about the JSON file,
+            # showing the name of the file and its size can help a person using
+            # this plugin to confirm that the correct JSON report is in use and
+            # (since the plugin adds to the report) confirm that the size is
+            # increasing each time the tests are run with this plugin
             console.print(NEWLINE)
             console.print(
-                f":flashlight: pytest-brightest: pytest-json-report detected at {json_file}"
+                f"{FLASHLIGHT_PREFIX} pytest-json-report detected at {json_file}"
             )
             console.print(
-                f":flashlight: pytest-brightest: pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
+                f"{FLASHLIGHT_PREFIX} pytest-json-report created a JSON file of size: {json_file.stat().st_size} bytes"
             )
+        # there was no JSON file and this means that several key
+        # features of this plugin are disabled (e.g., it is not possible
+        # to reorder the tests by cost if there is no JSON file that
+        # contains the cost information); make sure to tell the person
+        # using this plugin that they need to use pytest-json-report
         else:
             console.print(NEWLINE)
             console.print(
-                ":high_brightness: pytest-brightest: There is no JSON file created by pytest-json-report"
+                f"{HIGH_BRIGHTNESS_PREFIX} There is no JSON file created by pytest-json-report"
             )
             console.print(
-                ":high_brightness: pytest-brightest: Use --json-report from pytest-json-report to create the JSON file"
+                f"{HIGH_BRIGHTNESS_PREFIX} Use --json-report from pytest-json-report to create the JSON file"
             )
