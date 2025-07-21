@@ -400,11 +400,11 @@ class ReordererOfTests:
                 if module_items[module]:
                     cheapest_test = module_items[module][0]
                     console.print(
-                        f"{INDENT} Cheapest test in {module} is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+                        f"{INDENT} Cheapest test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
                     )
                     most_expensive_test = module_items[module][-1]
                     console.print(
-                        f"{INDENT} Most expensive test in {module} is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+                        f"{INDENT} Most expensive test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
                     )
             elif reorder_by == NAME:
                 # when sorting by name, the direction can be ascending or descending
