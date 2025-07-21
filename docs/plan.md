@@ -304,3 +304,13 @@ useful for future software agents who work on this project.
 ## Current Plan
 
 Note: A software agent can add details about their plan in this subsection.
+
+### Implement --repeat feature (2025-07-21)
+
+1. Add a new command-line argument `--repeat` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times each test should be repeated.
+2. In the `BrightestPlugin.configure` method, read the value of the `--repeat` argument and store it in a new instance variable, e.g., `self.repeat_count`.
+3. In `pytest_collection_modifyitems`, after the existing reordering and shuffling logic, check if `self.repeat_count` is greater than 1.
+4. If it is, create a new list of items. For each item in the (potentially reordered) `items` list, add it to the new list `self.repeat_count` times.
+5. Replace the original `items` list with this new list of repeated items.
+6. Add a new test case in `tests/test_plugin.py` to verify that the `--repeat` functionality works as expected. This test should check that the number of items is correctly multiplied.
+7. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
