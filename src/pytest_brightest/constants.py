@@ -61,6 +61,7 @@ COST = "cost"
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
 TESTS_WITHIN_MODULE = "tests-within-module"
+TESTS_WITHIN_SUITE = "tests-within-suite"
 TESTS_ACROSS_MODULES = "tests-across-modules"
 
 # define constants for reordering direction
