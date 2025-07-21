@@ -305,7 +305,7 @@ class ReordererOfTests:
             # print out the cost of the module using no more than 5 fixed
             # decimal places for the execution time of the test case
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} has cost {module_costs[module]:.5f}"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with overall cost {module_costs[module]:.5f}"
             )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
@@ -374,7 +374,7 @@ class ReordererOfTests:
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} has {module_failure_counts[module]} failing tests from previous run"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains {module_failure_counts[module]} failing tests from previous run"
             )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
@@ -566,13 +566,13 @@ def setup_json_report_plugin(config) -> bool:
     # be extract to support certain types of prioritization enabled by pytest-brightest
     except ImportError as e:
         console.print(
-            f"{HIGH_BRIGHTNESS_PREFIX} pytest-brightest: pytest-json-report not available: {e}"
+            f"{HIGH_BRIGHTNESS_PREFIX} pytest-json-report not available: {e}"
         )
         return False
     # some other problem occurred and the pytest-brightest plugin cannot use
     # the pytest-json-report plugin
     except Exception as e:
         console.print(
-            f"{HIGH_BRIGHTNESS_PREFIX} pytest-brightest: pytest-json report not setup: {e}"
+            f"{HIGH_BRIGHTNESS_PREFIX} pytest-json report not setup: {e}"
         )
         return False
