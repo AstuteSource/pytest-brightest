@@ -9,6 +9,7 @@ from pytest_brightest.plugin import (
     pytest_addoption,
     pytest_collection_modifyitems,
     pytest_configure,
+    pytest_generate_tests,
     pytest_runtest_logreport,
     pytest_sessionfinish,
 )
@@ -192,7 +193,7 @@ class TestHooks:
         parser.getgroup.return_value = mocker.MagicMock()
         pytest_addoption(parser)
         assert parser.getgroup.called
-        assert parser.getgroup.return_value.addoption.call_count == 5
+        assert parser.getgroup.return_value.addoption.call_count == 6
 
     def test_pytest_configure(self, mocker, mock_config):
         """Test that the plugin is configured."""
@@ -599,3 +600,31 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
         dumped_data["brightest"][0]["runcount"] == 2
     )  # first run was removed
     assert dumped_data["brightest"][-1]["runcount"] == 26  # new run added
+
+
+def test_pytest_generate_tests(mocker):
+    """Test that pytest_generate_tests parameterizes the test."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.repeat_count = 3
+    metafunc = mocker.MagicMock()
+    metafunc.fixturenames = []
+    pytest_generate_tests(metafunc)
+    assert "__pytest_repeat_step_number" in metafunc.fixturenames
+    metafunc.parametrize.assert_called_once_with(
+        "__pytest_repeat_step_number", range(3)
+    )
+
+
+def test_pytest_generate_tests_disabled(mocker):
+    """Test that pytest_generate_tests does nothing when disabled."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = False
+    mock_plugin.repeat_count = 3
+    metafunc = mocker.MagicMock()
+    pytest_generate_tests(metafunc)
+    metafunc.parametrize.assert_not_called()
