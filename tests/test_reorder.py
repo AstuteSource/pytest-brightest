@@ -414,32 +414,47 @@ class TestReordererOfTests:
             "mod1::test_slow",
         ]
 
-    # def test_reorder_tests_within_module_by_failure(
-    #     self, mock_test_item, mocker
-    # ):
-    #     """Test reordering tests within each module by failure."""
-    #     reorderer = ReordererOfTests()
-    #     reorderer.test_data = {
-    #         "mod1::test_pass": {"total_duration": 1.0, "outcome": "passed"},
-    #         "mod1::test_fail": {"total_duration": 1.0, "outcome": "failed"},
-    #     }
-    #     items = [
-    #         mock_test_item("mod1::test_pass"),
-    #         mock_test_item("mod1::test_fail"),
-    #     ]
-    #     mocker.patch("pytest_brightest.reorder.console.print")
-    #     reorderer.reorder_tests_within_module(
-    #         items, "failure", ascending=False
-    #     )
-    #     assert [item.name for item in items] == [
-    #         "mod1::test_fail",
-    #         "mod1::test_pass",
-    #     ]
-    #     reorderer.reorder_tests_within_module(items, "failure", ascending=True)
-    #     assert [item.name for item in items] == [
-    #         "mod1::test_pass",
-    #         "mod1::test_fail",
-    #     ]
+    def test_reorder_tests_within_module_by_failure(
+        self, mock_test_item, mocker
+    ):
+        """Test reordering tests within each module by failure."""
+        reorderer = ReordererOfTests()
+        reorderer.brightest_data = {
+            "data": {
+                "test_case_failures": {
+                    "mod1::test_pass": 0,
+                    "mod1::test_fail": 1,
+                }
+            }
+        }
+        items = [
+            mock_test_item("mod1::test_pass"),
+            mock_test_item("mod1::test_fail"),
+        ]
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer.reorder_tests_within_module(
+            items, "failure", ascending=False
+        )
+        assert [item.name for item in items] == [
+            "mod1::test_fail",
+            "mod1::test_pass",
+        ]
+        reorderer.reorder_tests_within_module(items, "failure", ascending=True)
+        assert [item.name for item in items] == [
+            "mod1::test_pass",
+            "mod1::test_fail",
+        ]
+
+    def test_get_test_failure_count(self, mock_test_item):
+        """Test getting the failure count of a test."""
+        reorderer = ReordererOfTests()
+        reorderer.brightest_data = {
+            "data": {"test_case_failures": {"test_one": 1}}
+        }
+        item = mock_test_item("test_one")
+        assert reorderer.get_test_failure_count(item) == 1
+        item = mock_test_item("test_two")
+        assert reorderer.get_test_failure_count(item) == 0
 
     def test_reorder_tests_across_modules(self, mock_test_item):
         """Test reordering tests across all modules."""
