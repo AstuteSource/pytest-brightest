@@ -419,6 +419,16 @@ class ReordererOfTests:
                         key=lambda item: getattr(item, NODEID, EMPTY_STRING),
                         reverse=True,
                     )
+                # display the diagnostic about first and last test in module
+                if module_items[module]:
+                    cheapest_test = module_items[module][0]
+                    console.print(
+                        f"{INDENT} First by-name test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+                    )
+                    most_expensive_test = module_items[module][-1]
+                    console.print(
+                        f"{INDENT} Last by-name test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+                    )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
         items[:] = reordered_items
