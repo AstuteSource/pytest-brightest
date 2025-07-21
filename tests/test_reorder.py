@@ -72,7 +72,7 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
     assert "test_case_costs" in d
     # COST, TESTS_ACROSS_MODULES
     d = reorderer.get_prior_data_for_reordering(
-        items, "cost", "tests-across-modules"
+        items, "cost", "tests-within-suite"
     )
     assert "test_case_costs" in d
     # NAME, MODULES_WITHIN_SUITE
@@ -80,9 +80,9 @@ def test_get_prior_data_for_reordering_all_branches(tmp_path, mock_test_item):
         items, "name", "modules-within-suite"
     )
     assert "module_order" in d
-    # NAME, TESTS_ACROSS_MODULES
+    # NAME, TESTS_WITHIN_SUITE
     d = reorderer.get_prior_data_for_reordering(
-        items, "name", "tests-across-modules"
+        items, "name", "tests-within-suite"
     )
     assert "test_order" in d
     # NAME, TESTS_WITHIN_MODULE
@@ -146,7 +146,7 @@ def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
     )
     # tests-across-modules
     reorderer.reorder_tests_in_place(
-        items, "cost", "ascending", "tests-across-modules"
+        items, "cost", "ascending", "tests-within-suite"
     )
 
     # modules-within-suite, name
@@ -161,9 +161,9 @@ def test_reorder_tests_in_place_all_branches(tmp_path, mock_test_item, mocker):
     reorderer.reorder_tests_in_place(
         items, "cost", "ascending", "tests-within-module"
     )
-    # tests-across-modules
+    # tests-within-suite
     reorderer.reorder_tests_in_place(
-        items, "cost", "ascending", "tests-across-modules"
+        items, "cost", "ascending", "tests-within-suite"
     )
 
 
