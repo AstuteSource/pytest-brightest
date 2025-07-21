@@ -276,13 +276,6 @@ def pytest_runtest_logreport(report: TestReport) -> None:
         _plugin.record_test_failure(report.nodeid)
 
 
-# def _sort_dict_by_value(d):
-#     """Create a new dictionary with keys sorted by their values in ascending order."""
-#     sorted_dictionary = dict(sorted(d.items(), key=lambda item: item[1]))
-#     console.print(sorted_dictionary)
-#     return sorted_dictionary
-
-
 def _sort_dict_by_value(
     data_dict: Mapping[str, Union[int, float]], order: str
 ) -> Mapping[str, Union[int, float]]:
