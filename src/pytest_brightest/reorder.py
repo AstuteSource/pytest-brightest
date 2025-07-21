@@ -200,7 +200,7 @@ class ReordererOfTests:
             items, key=self.get_test_total_duration, reverse=not ascending
         )
 
-    def get_prior_data_for_reordering(  # noqa: PLR0912
+    def get_prior_data_for_reordering(  # noqa: PLR0912, PLR0915
         self, items: List["Item"], technique: str, focus: str
     ) -> Dict[str, Any]:
         """Get the prior data that was used for reordering during this session."""
@@ -250,16 +250,24 @@ class ReordererOfTests:
                 prior_data[MODULE_TESTS] = module_tests
         elif technique == FAILURE:
             module_failure_counts: Dict[str, int] = {}
+            test_case_failures: Dict[str, int] = {}
             for item in items:
                 nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in module_failure_counts:
                         module_failure_counts[module_path] = 0
-                    if self.get_test_outcome(item) in [FAILED, ERROR]:
+                    failure_count = self.get_test_failure_count(item)
+                    if failure_count > 0:
                         module_failure_counts[module_path] += 1
+                    test_case_failures[nodeid] = failure_count
             if focus == MODULES_WITHIN_SUITE:
                 prior_data[MODULE_FAILURE_COUNTS] = module_failure_counts
+            elif focus == TESTS_WITHIN_MODULE:
+                prior_data[MODULE_FAILURE_COUNTS] = module_failure_counts
+                prior_data["test_case_failures"] = test_case_failures
+            elif focus == TESTS_WITHIN_SUITE:
+                prior_data["test_case_failures"] = test_case_failures
         return prior_data
 
     def reorder_modules_by_cost(
