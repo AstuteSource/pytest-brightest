@@ -7,20 +7,24 @@ changes to this repository. Your primary goal is to make safe, incremental,
 and high-quality contributions.
 
 - **Always use `uv`:** This project uses `uv` for all dependency management,
-  virtual environments, and task running. Do not use `pip` or `venv` directly.
+virtual environments, and task running. Do not use `pip` or `venv` directly.
 - **Follow all guidelines:** This document contains the complete set of
-  guidelines from `AGENTS.md` and `docs/plan.md`. You must follow them strictly.
+guidelines from `AGENTS.md` and `docs/plan.md`. You must follow them strictly.
 - **Verify your changes:** Before committing any changes, you must run all
-  linters and tests to ensure your changes are correct and follow the project's
-  style. Use `uv run task all`.
-- **Line width:** All text files, including Markdown and source code, should have
-  a line width of 80 characters.
-- **Permission to run commands:** You have permission to run all commands in this
-  file to verify their functionality.
-- **Incremental changes:** Make small, incremental changes. This makes it easier
-  to review your work and catch errors early.
+linters and tests to ensure your changes are correct and follow the project's
+style. Use `uv run task all`.
+- **Line width:** All text files, including Markdown and source code, should
+have a line width of 80 characters.
+- **Permission to run commands:** You have permission to run all commands in
+this file to verify their functionality.
+- **Incremental changes:** Make small, incremental changes. This makes it
+easier to review your work and catch errors early.
 - **Communicate clearly:** When you propose changes, explain what you've done
-  and why.
+and why.
+- **Save your plan:** Save a copy of your plan for completing a task in the
+`docs/plan.md` file. There is a section called `Current Plan` at the bottom of
+the file and you can save your plan there. Create a new sub-sub-section with
+the title of your plan and the date you plan to complete it.
 
 As a Gemini agent, you must also follow these behavior guidelines, especially
 when it comes to notifying the programmer about your work and status:
