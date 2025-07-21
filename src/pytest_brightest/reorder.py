@@ -21,6 +21,7 @@ from .constants import (
     FAILURE,
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
+    INDENT,
     JSON_REPORT_FILE,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
@@ -384,12 +385,27 @@ class ReordererOfTests:
         # iterate over the modules and reorder the tests within each module
         for module in module_order:
             console.print(
-                f":flashlight: pytest-brightest: Reordering tests in module {module}"
+                f"{FLASHLIGHT_PREFIX} Reordering tests in module {module}"
             )
+            # reordering the test suite according to the recorded
+            # cost of the test cases inside of each module
             if reorder_by == COST:
                 module_items[module].sort(
                     key=self.get_test_total_duration, reverse=not ascending
                 )
+                # extract the node ID for the "cheapest" (i.e., lowest cost)
+                # test case and display it for diagnostic purposes and then
+                # do the same thing for the "most expensive" test case (i.e.,
+                # the test case that has the highest cost)
+                if module_items[module]:
+                    cheapest_test = module_items[module][0]
+                    console.print(
+                        f"{INDENT} Cheapest test in {module} is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+                    )
+                    most_expensive_test = module_items[module][-1]
+                    console.print(
+                        f"{INDENT} Most expensive test in {module} is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+                    )
             elif reorder_by == NAME:
                 # when sorting by name, the direction can be ascending or descending
                 # and the key for sorting is the nodeid of the test item
