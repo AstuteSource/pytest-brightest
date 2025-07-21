@@ -89,3 +89,7 @@ TEST_CASE_COSTS = "test_case_costs"
 TEST_MODULE_COSTS = "test_module_costs"
 TEST_CASE_FAILURES = "test_case_failures"
 TEST_MODULE_FAILURES = "test_module_failures"
+
+# define constants for command-line arguments in JSON report
+REPEAT_COUNT = "repeat_count"
+REPEAT_FAILED_COUNT = "repeat_failed_count"

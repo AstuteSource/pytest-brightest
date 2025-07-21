@@ -9,7 +9,6 @@ from pytest_brightest.plugin import (
     pytest_addoption,
     pytest_collection_modifyitems,
     pytest_configure,
-    pytest_generate_tests,
     pytest_runtest_logreport,
     pytest_runtest_protocol,
     pytest_sessionfinish,
@@ -213,8 +212,10 @@ class TestHooks:
         )
         mock_plugin.enabled = True
         mock_plugin.reorder_enabled = True
-        mock_plugin.shuffle_enabled = False
+        mock_plugin.shuffle_enabled = True
         mock_plugin.technique = None
+        mock_plugin.repeat_count = 1
+        mock_plugin.repeat_count = 1
         config = mock_config()
         items = [mock_test_item("one"), mock_test_item("two")]
         pytest_collection_modifyitems(config, items)
@@ -232,6 +233,7 @@ class TestHooks:
         mock_plugin.reorder_enabled = False
         mock_plugin.shuffle_enabled = True
         mock_plugin.technique = None
+        mock_plugin.repeat_count = 1
         config = mock_config()
         items = [mock_test_item("one"), mock_test_item("two")]
         pytest_collection_modifyitems(config, items)
@@ -246,6 +248,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.reorder_enabled = True
         mock_plugin.shuffle_enabled = True
         mock_plugin.technique = None
@@ -263,6 +266,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.reorder_enabled = True
         mock_plugin.shuffle_enabled = True
         mock_plugin.technique = None
@@ -278,6 +282,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.technique = "failure"
         report = mocker.MagicMock()
         report.failed = True
@@ -293,6 +298,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.technique = None
         mock_plugin.brightest_json_file = "non_existent.json"
         mocker.patch("pathlib.Path.exists", return_value=False)
@@ -312,6 +318,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.brightest_json_file = "existent.json"
         mock_plugin.technique = "cost"
         mock_plugin.focus = "tests-across-modules"
@@ -358,6 +365,7 @@ class TestHooks:
             "pytest_brightest.plugin._plugin", autospec=True
         )
         mock_plugin.enabled = True
+        mock_plugin.repeat_count = 1
         mock_plugin.brightest_json_file = str(tmp_path / "report.json")
         mock_plugin.technique = "failure"
         mock_plugin.focus = "modules-within-suite"
@@ -492,6 +500,7 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.brightest_json_file = "test.json"
     mock_plugin.technique = "shuffle"
     mock_plugin.focus = "tests-across-modules"
@@ -555,6 +564,7 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.brightest_json_file = "test.json"
     mock_plugin.technique = "shuffle"
     mock_plugin.focus = "tests-across-modules"
@@ -603,32 +613,46 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
     assert dumped_data["brightest"][-1]["runcount"] == 26  # new run added
 
 
-def test_pytest_generate_tests(mocker):
-    """Test that pytest_generate_tests parameterizes the test."""
+def test_pytest_collection_modifyitems_with_repeat(
+    mocker, mock_config, mock_test_item
+):
+    """Test that pytest_collection_modifyitems applies repeat functionality correctly."""
     mock_plugin = mocker.patch(
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
+    mock_plugin.reorder_enabled = False
+    mock_plugin.shuffle_enabled = False
     mock_plugin.repeat_count = 3
-    metafunc = mocker.MagicMock()
-    metafunc.fixturenames = []
-    pytest_generate_tests(metafunc)
-    assert "__pytest_repeat_step_number" in metafunc.fixturenames
-    metafunc.parametrize.assert_called_once_with(
-        "__pytest_repeat_step_number", range(3)
-    )
+    config = mock_config()
+    items = [mock_test_item("test1"), mock_test_item("test2")]
+    pytest_collection_modifyitems(config, items)
+    # should have 6 items (2 original * 3 repeats)
+    assert len(items) == 6
+    # should maintain the order but repeat each test
+    expected_names = ["test1", "test2", "test1", "test2", "test1", "test2"]
+    assert [item.name for item in items] == expected_names
 
 
-def test_pytest_generate_tests_disabled(mocker):
-    """Test that pytest_generate_tests does nothing when disabled."""
+def test_pytest_collection_modifyitems_repeat_with_reorder(
+    mocker, mock_config, mock_test_item
+):
+    """Test that repeat works with reordering."""
     mock_plugin = mocker.patch(
         "pytest_brightest.plugin._plugin", autospec=True
     )
-    mock_plugin.enabled = False
-    mock_plugin.repeat_count = 3
-    metafunc = mocker.MagicMock()
-    pytest_generate_tests(metafunc)
-    metafunc.parametrize.assert_not_called()
+    mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
+    mock_plugin.reorder_enabled = True
+    mock_plugin.shuffle_enabled = False
+    mock_plugin.repeat_count = 2
+    config = mock_config()
+    items = [mock_test_item("test1"), mock_test_item("test2")]
+    pytest_collection_modifyitems(config, items)
+    mock_plugin.reorder_tests.assert_called_once_with(items)
+    # should have 4 items (2 original * 2 repeats)
+    assert len(items) == 4
 
 
 def test_pytest_runtest_protocol_disabled(mocker, mock_test_item):
@@ -649,6 +673,7 @@ def test_pytest_runtest_protocol_no_repeat_failed(mocker, mock_test_item):
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.repeat_failed_count = 0
     item = mock_test_item("test_item")
     result = pytest_runtest_protocol(item, None)
@@ -661,6 +686,7 @@ def test_pytest_runtest_protocol_passing_test(mocker, mock_test_item):
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.repeat_failed_count = 2
 
     # mock passing test reports
@@ -700,6 +726,7 @@ def test_pytest_runtest_protocol_failing_test_eventually_passes(
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.repeat_failed_count = 3
 
     # first run fails
@@ -735,9 +762,13 @@ def test_pytest_runtest_protocol_failing_test_eventually_passes(
     assert result is True
     # should run twice: initial run + one retry
     assert mock_runtestprotocol.call_count == 2
-    # should print retry message once
-    mock_console_print.assert_called_once_with(
+    # should print retry message and success message
+    assert mock_console_print.call_count == 2
+    mock_console_print.assert_any_call(
         ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 2)"
+    )
+    mock_console_print.assert_any_call(
+        ":flashlight: pytest-brightest: Test test_item passed on retry attempt 2"
     )
     # should log the passing reports
     assert mock_hook.call_count == 3
@@ -751,6 +782,7 @@ def test_pytest_runtest_protocol_failing_test_exhausts_retries(
         "pytest_brightest.plugin._plugin", autospec=True
     )
     mock_plugin.enabled = True
+    mock_plugin.repeat_count = 1
     mock_plugin.repeat_failed_count = 2
 
     # all runs fail

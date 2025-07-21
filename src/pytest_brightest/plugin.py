@@ -35,6 +35,8 @@ from .constants import (
     NEWLINE,
     NODEID,
     NODEID_SEPARATOR,
+    REPEAT_COUNT,
+    REPEAT_FAILED_COUNT,
     RUNCOUNT,
     SEED,
     SHUFFLE,
@@ -303,16 +305,14 @@ def pytest_collection_modifyitems(config: Config, items: List[Item]) -> None:
         # --> Use the shuffling technique
         elif _plugin.shuffle_enabled:
             _plugin.shuffle_tests(items)
-
-
-def pytest_generate_tests(metafunc: Any) -> None:
-    """Generate (multiple) parametrized calls to a test function."""
-    if _plugin.enabled and _plugin.repeat_count > 1:
-        # repeat the test execution for the specified number of times
-        metafunc.fixturenames.append("__pytest_repeat_step_number")
-        metafunc.parametrize(
-            "__pytest_repeat_step_number", range(_plugin.repeat_count)
-        )
+        # apply repeat functionality after reordering/shuffling
+        if _plugin.repeat_count > 1:
+            # create repeated items by duplicating the ordered/shuffled list
+            repeated_items = []
+            for _ in range(_plugin.repeat_count):
+                repeated_items.extend(items.copy())
+            # replace the items list with the repeated items
+            items[:] = repeated_items
 
 
 def pytest_runtest_protocol(
@@ -341,13 +341,16 @@ def pytest_runtest_protocol(
                     for report in repeat_reports
                 )
                 if call_passed:
-                    # use the passing reports
+                    # use the passing reports for final outcome
                     reports = repeat_reports
+                    console.print(
+                        f"{FLASHLIGHT_PREFIX} Test {item.nodeid} passed on retry attempt {i + 2}"
+                    )
                     break
                 else:
                     # update with the latest failed reports
                     reports = repeat_reports
-        # log the final reports
+        # log the final reports to ensure proper test outcome recording
         for report in reports:
             item.config.hook.pytest_runtest_logreport(report=report)
         return True
@@ -380,6 +383,8 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
         FOCUS: _plugin.focus,
         DIRECTION: _plugin.direction,
         SEED: _plugin.seed,
+        REPEAT_COUNT: _plugin.repeat_count,
+        REPEAT_FAILED_COUNT: _plugin.repeat_failed_count,
         DATA: {},
         TESTCASES: [
             getattr(item, NODEID, EMPTY_STRING) for item in session.items
@@ -395,8 +400,13 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
         # reload the test data to get the current session's performance data
         # that was just written by pytest-json-report
         _plugin.reorderer.load_test_data()
+        # use original session items (before repeat) for data collection
+        # to avoid duplicate counting of repeated tests
+        original_items = (
+            _plugin.session_items if _plugin.session_items else session.items
+        )
         # collect cost data for each test case
-        for item in session.items:
+        for item in original_items:
             nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
                 cost = _plugin.reorderer.get_test_total_duration(item)
