@@ -485,6 +485,10 @@ class ReordererOfTests:
         self, items: List["Item"], reorder_by: str, ascending: bool = True
     ) -> None:
         """Reorder tests across all modules by the specified technique."""
+        # note that reordering all of the test cases across the modules
+        # is like treating all of the test cases as being inside of one
+        # big test suite, regardless of how they are grouped inside of
+        # the modules (i.e., the individual files in the test suite)
         if reorder_by == COST:
             items.sort(key=self.get_test_total_duration, reverse=not ascending)
         elif reorder_by == NAME:
@@ -493,13 +497,7 @@ class ReordererOfTests:
                 reverse=not ascending,
             )
         elif reorder_by == FAILURE:
-            passing_tests, failing_tests = self.classify_tests_by_outcome(
-                items
-            )
-            if ascending:
-                items[:] = passing_tests + failing_tests
-            else:
-                items[:] = failing_tests + passing_tests
+            items.sort(key=self.get_test_failure_count, reverse=not ascending)
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""
