@@ -158,6 +158,16 @@ class BrightestPlugin:
             )
         self.repeat_count = config.getoption("--repeat")
         self.repeat_failed_count = config.getoption("--repeat-failed")
+        # display diagnostic information about the two types of
+        # techniques for performing repeats of the test cases
+        if self.repeat_count > 1:
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Repeating all tests {self.repeat_count} times"
+            )
+        if self.repeat_failed_count > 0:
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Repeating each failed tests {self.repeat_failed_count} times"
+            )
 
     def record_test_failure(self, nodeid: str) -> None:
         """Record a test failure for the current session."""
