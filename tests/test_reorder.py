@@ -414,6 +414,33 @@ class TestReordererOfTests:
             "mod1::test_slow",
         ]
 
+    # def test_reorder_tests_within_module_by_failure(
+    #     self, mock_test_item, mocker
+    # ):
+    #     """Test reordering tests within each module by failure."""
+    #     reorderer = ReordererOfTests()
+    #     reorderer.test_data = {
+    #         "mod1::test_pass": {"total_duration": 1.0, "outcome": "passed"},
+    #         "mod1::test_fail": {"total_duration": 1.0, "outcome": "failed"},
+    #     }
+    #     items = [
+    #         mock_test_item("mod1::test_pass"),
+    #         mock_test_item("mod1::test_fail"),
+    #     ]
+    #     mocker.patch("pytest_brightest.reorder.console.print")
+    #     reorderer.reorder_tests_within_module(
+    #         items, "failure", ascending=False
+    #     )
+    #     assert [item.name for item in items] == [
+    #         "mod1::test_fail",
+    #         "mod1::test_pass",
+    #     ]
+    #     reorderer.reorder_tests_within_module(items, "failure", ascending=True)
+    #     assert [item.name for item in items] == [
+    #         "mod1::test_pass",
+    #         "mod1::test_fail",
+    #     ]
+
     def test_reorder_tests_across_modules(self, mock_test_item):
         """Test reordering tests across all modules."""
         reorderer = ReordererOfTests()
