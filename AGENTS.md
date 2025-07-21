@@ -110,3 +110,11 @@ All test cases should follow these standards:
 7. **Completion**: When you are finished with tasks, please summarize what tasks
    you completed, how you completed them, the challenges you faced, how you
    overcame them, and the rules that you followed during completion of the tasks.
+
+## Additional Notes for the Coding Agent
+
+Note: This file is specifically for coding agents and this section can be used
+by the coding agent to add additional details about this project that would
+be helpful for the agent to know when it is run again. Every time a coding
+agent finishes a task, it should add notes here as it deems appropriate.
+The coding agent should write the notes as a Markdown list.
