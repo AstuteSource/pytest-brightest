@@ -330,7 +330,7 @@ def pytest_runtest_protocol(
             # if the test fails, repeat it up to the specified number of times
             for i in range(_plugin.repeat_failed_count):
                 console.print(
-                    f"{FLASHLIGHT_PREFIX} Repeating failed test {item.nodeid} (attempt {i + 2})"
+                    f"{FLASHLIGHT_PREFIX} Attempt {i + 2} at repeating failed test {item.nodeid}"
                 )
                 repeat_reports = runtestprotocol(
                     item, nextitem=nextitem, log=False
