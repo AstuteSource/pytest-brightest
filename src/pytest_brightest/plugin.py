@@ -43,8 +43,8 @@ from .constants import (
     TEST_MODULE_COSTS,
     TEST_MODULE_FAILURES,
     TESTCASES,
-    TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
+    TESTS_WITHIN_SUITE,
     TIMESTAMP,
 )
 from .reorder import ReordererOfTests, setup_json_report_plugin
@@ -87,7 +87,10 @@ class BrightestPlugin:
         # configure the name of the file that will contain the
         # JSON file that contains the pytest-json-report data
         self.brightest_json_file = DEFAULT_PYTEST_JSON_REPORT_PATH
-        # preserve historical brightest data before pytest-json-report overwrites it
+        # preserve historical brightest data before pytest-json-report
+        # overwrites it with the new data; this is a critical step because
+        # this plugin stores and relies on historical data to perform
+        # various types of optimizations to the regression testing process
         self._preserve_historical_brightest_data()
         # always set up JSON reporting when brightest is enabled;
         # this ensures generation of test execution data for future reordering
@@ -106,10 +109,13 @@ class BrightestPlugin:
         # if the shuffling technique is chosen, then configure the shuffler
         # and alert the person using the plugin if there is a misconfiguration
         if self.technique == SHUFFLE:
+            # shuffling is enabled, so the tests will be randomly ordered
+            # depending on the specific focus that was specified
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
             if self.shuffle_by is None:
-                self.shuffle_by = TESTS_ACROSS_MODULES
+                # self.shuffle_by = TESTS_ACROSS_MODULES
+                self.shuffle_by = TESTS_WITHIN_SUITE
             seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
@@ -147,7 +153,7 @@ class BrightestPlugin:
         # if shuffling is enabled and there are items to shuffle, then
         # shuffle them according to the chosen focus
         if self.shuffle_enabled and self.shuffler and items:
-            if self.shuffle_by == TESTS_ACROSS_MODULES:
+            if self.shuffle_by == TESTS_WITHIN_SUITE:
                 self.shuffler.shuffle_items_in_place(items)
             elif self.shuffle_by == TESTS_WITHIN_MODULE:
                 self.shuffler.shuffle_items_by_file_in_place(items)
@@ -227,10 +233,10 @@ def pytest_addoption(parser: Parser) -> None:
         choices=[
             MODULES_WITHIN_SUITE,
             TESTS_WITHIN_MODULE,
-            TESTS_ACROSS_MODULES,
+            TESTS_WITHIN_SUITE,
         ],
-        default=TESTS_ACROSS_MODULES,
-        help="Reorder modules, tests within modules, or tests across modules",
+        default=TESTS_WITHIN_SUITE,
+        help="Reorder modules within suite, tests within modules, or tests within suite",
     )
     group.addoption(
         "--reorder-in-direction",
