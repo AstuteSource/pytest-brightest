@@ -165,6 +165,16 @@ class ReordererOfTests:
         # return the outcome of the test, or unknown if it is not available
         return test_info.get(OUTCOME, UNKNOWN)
 
+    def get_test_failure_count(self, item: "Item") -> int:
+        """Get the failure count of a test item from previous run(s)."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        if self.brightest_data and "data" in self.brightest_data:
+            test_case_failures = self.brightest_data["data"].get(
+                "test_case_failures", {}
+            )
+            return test_case_failures.get(node_id, 0)
+        return 0
+
     def classify_tests_by_outcome(
         self, items: List["Item"]
     ) -> Tuple[List["Item"], List["Item"]]:
@@ -433,13 +443,9 @@ class ReordererOfTests:
         self, module_items: List["Item"], ascending: bool
     ) -> None:
         """Reorder a module's tests by failure."""
-        passing_tests, failing_tests = self.classify_tests_by_outcome(
-            module_items
+        module_items.sort(
+            key=self.get_test_failure_count, reverse=not ascending
         )
-        if ascending:
-            module_items[:] = passing_tests + failing_tests
-        else:
-            module_items[:] = failing_tests + passing_tests
         if module_items:
             first_test = module_items[0]
             console.print(
