@@ -11,6 +11,7 @@ from pytest_brightest.plugin import (
     pytest_configure,
     pytest_generate_tests,
     pytest_runtest_logreport,
+    pytest_runtest_protocol,
     pytest_sessionfinish,
 )
 
@@ -193,7 +194,7 @@ class TestHooks:
         parser.getgroup.return_value = mocker.MagicMock()
         pytest_addoption(parser)
         assert parser.getgroup.called
-        assert parser.getgroup.return_value.addoption.call_count == 6
+        assert parser.getgroup.return_value.addoption.call_count == 7
 
     def test_pytest_configure(self, mocker, mock_config):
         """Test that the plugin is configured."""
@@ -628,3 +629,163 @@ def test_pytest_generate_tests_disabled(mocker):
     metafunc = mocker.MagicMock()
     pytest_generate_tests(metafunc)
     metafunc.parametrize.assert_not_called()
+
+
+def test_pytest_runtest_protocol_disabled(mocker, mock_test_item):
+    """Test that pytest_runtest_protocol returns None when plugin disabled."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = False
+    mock_plugin.repeat_failed_count = 2
+    item = mock_test_item("test_item")
+    result = pytest_runtest_protocol(item, None)
+    assert result is None
+
+
+def test_pytest_runtest_protocol_no_repeat_failed(mocker, mock_test_item):
+    """Test that pytest_runtest_protocol returns None when repeat_failed_count is 0."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.repeat_failed_count = 0
+    item = mock_test_item("test_item")
+    result = pytest_runtest_protocol(item, None)
+    assert result is None
+
+
+def test_pytest_runtest_protocol_passing_test(mocker, mock_test_item):
+    """Test that pytest_runtest_protocol handles passing tests correctly."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.repeat_failed_count = 2
+
+    # mock passing test reports
+    mock_reports = [
+        mocker.MagicMock(when="setup", failed=False),
+        mocker.MagicMock(when="call", failed=False),
+        mocker.MagicMock(when="teardown", failed=False),
+    ]
+
+    mock_runtestprotocol = mocker.patch(
+        "pytest_brightest.plugin.runtestprotocol", return_value=mock_reports
+    )
+
+    item = mock_test_item("test_item")
+    # mock the config and hook
+    mock_config = mocker.MagicMock()
+    mock_hook = mocker.MagicMock()
+    mock_config.hook.pytest_runtest_logreport = mock_hook
+    item.config = mock_config
+
+    result = pytest_runtest_protocol(item, None)
+
+    assert result is True
+    # should only run once for passing test
+    mock_runtestprotocol.assert_called_once_with(
+        item, nextitem=None, log=False
+    )
+    # should log all reports
+    assert mock_hook.call_count == 3
+
+
+def test_pytest_runtest_protocol_failing_test_eventually_passes(
+    mocker, mock_test_item
+):
+    """Test that pytest_runtest_protocol retries failed tests and stops when they pass."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.repeat_failed_count = 3
+
+    # first run fails
+    mock_failing_reports = [
+        mocker.MagicMock(when="setup", failed=False),
+        mocker.MagicMock(when="call", failed=True),
+        mocker.MagicMock(when="teardown", failed=False),
+    ]
+
+    # second run passes
+    mock_passing_reports = [
+        mocker.MagicMock(when="setup", failed=False),
+        mocker.MagicMock(when="call", failed=False),
+        mocker.MagicMock(when="teardown", failed=False),
+    ]
+
+    mock_runtestprotocol = mocker.patch(
+        "pytest_brightest.plugin.runtestprotocol",
+        side_effect=[mock_failing_reports, mock_passing_reports],
+    )
+
+    mock_console_print = mocker.patch("pytest_brightest.plugin.console.print")
+
+    item = mock_test_item("test_item")
+    # mock the config and hook
+    mock_config = mocker.MagicMock()
+    mock_hook = mocker.MagicMock()
+    mock_config.hook.pytest_runtest_logreport = mock_hook
+    item.config = mock_config
+
+    result = pytest_runtest_protocol(item, None)
+
+    assert result is True
+    # should run twice: initial run + one retry
+    assert mock_runtestprotocol.call_count == 2
+    # should print retry message once
+    mock_console_print.assert_called_once_with(
+        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 2)"
+    )
+    # should log the passing reports
+    assert mock_hook.call_count == 3
+
+
+def test_pytest_runtest_protocol_failing_test_exhausts_retries(
+    mocker, mock_test_item
+):
+    """Test that pytest_runtest_protocol retries failed tests until exhausted."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_plugin.enabled = True
+    mock_plugin.repeat_failed_count = 2
+
+    # all runs fail
+    mock_failing_reports = [
+        mocker.MagicMock(when="setup", failed=False),
+        mocker.MagicMock(when="call", failed=True),
+        mocker.MagicMock(when="teardown", failed=False),
+    ]
+
+    mock_runtestprotocol = mocker.patch(
+        "pytest_brightest.plugin.runtestprotocol",
+        return_value=mock_failing_reports,
+    )
+
+    mock_console_print = mocker.patch("pytest_brightest.plugin.console.print")
+
+    item = mock_test_item("test_item")
+    # mock the config and hook
+    mock_config = mocker.MagicMock()
+    mock_hook = mocker.MagicMock()
+    mock_config.hook.pytest_runtest_logreport = mock_hook
+    item.config = mock_config
+
+    result = pytest_runtest_protocol(item, None)
+
+    assert result is True
+    # should run 3 times: initial run + 2 retries
+    assert mock_runtestprotocol.call_count == 3
+    # should print retry messages twice
+    assert mock_console_print.call_count == 2
+    mock_console_print.assert_any_call(
+        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 2)"
+    )
+    mock_console_print.assert_any_call(
+        ":flashlight: pytest-brightest: Repeating failed test test_item (attempt 3)"
+    )
+    # should log the final failing reports
+    assert mock_hook.call_count == 3
