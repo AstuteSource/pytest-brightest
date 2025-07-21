@@ -315,33 +315,44 @@ def pytest_generate_tests(metafunc: Any) -> None:
         )
 
 
-# def pytest_runtest_protocol(item: Item, nextitem: Optional[Item]) -> bool:
-#     """Run the test protocol for a single item."""
-#     if _plugin.enabled and _plugin.repeat_failed_count > 0:
-#         # custom test execution loop for repeating failed tests
-#         reports = runtestprotocol(item, nextitem=nextitem, log=False)
-#         for report in reports:
-#             if report.when == "call" and report.failed:
-#                 # if the test fails, repeat it up to the specified number of times
-#                 for i in range(_plugin.repeat_failed_count):
-#                     console.print(
-#                         f"{FLASHLIGHT_PREFIX} Repeating failed test {item.nodeid} (attempt {i + 2})"
-#                     )
-#                     reports = runtestprotocol(
-#                         item, nextitem=nextitem, log=False
-#                     )
-#                     # check if the test passed on a retry
-#                     passed = all(
-#                         not r.failed for r in reports if r.when == "call"
-#                     )
-#                     if passed:
-#                         break
-#         # log the final reports
-#         for report in reports:
-#             item.config.hook.pytest_runtest_logreport(report=report)
-#         return True
-#     # default behavior
-#     return False
+def pytest_runtest_protocol(
+    item: Item, nextitem: Optional[Item]
+) -> Optional[bool]:
+    """Run the test protocol for a single item."""
+    if _plugin.enabled and _plugin.repeat_failed_count > 0:
+        # custom test execution loop for repeating failed tests
+        reports = runtestprotocol(item, nextitem=nextitem, log=False)
+        # check if the test failed in the call phase
+        call_failed = any(
+            report.when == "call" and report.failed for report in reports
+        )
+        if call_failed:
+            # if the test fails, repeat it up to the specified number of times
+            for i in range(_plugin.repeat_failed_count):
+                console.print(
+                    f"{FLASHLIGHT_PREFIX} Repeating failed test {item.nodeid} (attempt {i + 2})"
+                )
+                repeat_reports = runtestprotocol(
+                    item, nextitem=nextitem, log=False
+                )
+                # check if the test passed on a retry
+                call_passed = any(
+                    report.when == "call" and not report.failed
+                    for report in repeat_reports
+                )
+                if call_passed:
+                    # use the passing reports
+                    reports = repeat_reports
+                    break
+                else:
+                    # update with the latest failed reports
+                    reports = repeat_reports
+        # log the final reports
+        for report in reports:
+            item.config.hook.pytest_runtest_logreport(report=report)
+        return True
+    # default behavior
+    return None
 
 
 def pytest_runtest_logreport(report: TestReport) -> None:
