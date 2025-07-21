@@ -38,6 +38,7 @@ REPORT_JSON = ".report.json"
 
 # define the empty string and starting constants
 EMPTY_STRING = ""
+INDENT = "  "
 NEWLINE = "\n"
 ZERO_COST = 0.0
 BRIGHTEST = "brightest"
