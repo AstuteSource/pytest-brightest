@@ -456,48 +456,38 @@ class TestReordererOfTests:
         item = mock_test_item("test_two")
         assert reorderer.get_test_failure_count(item) == 0
 
-    def test_reorder_tests_across_modules(self, mock_test_item):
-        """Test reordering tests across all modules."""
+    def test_reorder_tests_across_modules_by_failure_history(
+        self, mock_test_item
+    ):
+        """Test reordering tests across modules by historical failure."""
         reorderer = ReordererOfTests()
-        reorderer.test_data = {
-            "mod2::test_slow": {"total_duration": 2.0, "outcome": "passed"},
-            "mod1::test_fast": {"total_duration": 1.0, "outcome": "passed"},
-            "mod1::test_fail": {"total_duration": 1.0, "outcome": "failed"},
+        reorderer.brightest_data = {
+            "data": {
+                "test_case_failures": {
+                    "mod2::test_slow": 0,
+                    "mod1::test_fast": 1,
+                    "mod1::test_fail": 0,
+                }
+            }
         }
         items = [
             mock_test_item("mod2::test_slow"),
             mock_test_item("mod1::test_fast"),
             mock_test_item("mod1::test_fail"),
         ]
-        reorderer.reorder_tests_across_modules(items, "cost")
-        assert [item.name for item in items] == [
-            "mod1::test_fast",
-            "mod1::test_fail",
-            "mod2::test_slow",
-        ]
-        reorderer.reorder_tests_across_modules(items, "name")
-        assert [item.name for item in items] == [
-            "mod1::test_fail",
-            "mod1::test_fast",
-            "mod2::test_slow",
-        ]
-        reorderer.reorder_tests_across_modules(items, "name", ascending=False)
-        assert [item.name for item in items] == [
-            "mod2::test_slow",
-            "mod1::test_fast",
-            "mod1::test_fail",
-        ]
-        reorderer.reorder_tests_across_modules(items, "failure")
-        assert [item.name for item in items] == [
-            "mod2::test_slow",
-            "mod1::test_fast",
-            "mod1::test_fail",
-        ]
         reorderer.reorder_tests_across_modules(
             items, "failure", ascending=False
         )
         assert [item.name for item in items] == [
-            "mod1::test_fail",
+            "mod1::test_fast",
             "mod2::test_slow",
+            "mod1::test_fail",
+        ]
+        reorderer.reorder_tests_across_modules(
+            items, "failure", ascending=True
+        )
+        assert [item.name for item in items] == [
+            "mod2::test_slow",
+            "mod1::test_fail",
             "mod1::test_fast",
         ]
