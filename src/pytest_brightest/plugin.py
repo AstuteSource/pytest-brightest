@@ -102,6 +102,11 @@ class BrightestPlugin:
             console.print(
                 f"{HIGH_BRIGHTNESS_PREFIX} pytest-json-report setup failed, certain features disabled"
             )
+        # create the reorderer of tests so that it is possible to
+        # extract historical data about test execution; note that the
+        # reorderer is now created in all modes of execution
+        if json_setup_success and self.brightest_json_file:
+            self.reorderer = ReordererOfTests(self.brightest_json_file)
         # extract the configuration options for reordering and shuffling
         self.technique = config.getoption("--reorder-by-technique")
         self.focus = config.getoption("--reorder-by-focus")
@@ -143,8 +148,6 @@ class BrightestPlugin:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
-            if json_setup_success and self.brightest_json_file:
-                self.reorderer = ReordererOfTests(self.brightest_json_file)
             console.print(
                 f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )
@@ -343,20 +346,6 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
                 # aggregate module failures
                 test_module_failures[module_path] = (
                     test_module_failures.get(module_path, 0) + failure_count
-                )
-    else:
-        # if no reorderer, set costs and failures to 0
-        for item in session.items:
-            nodeid = getattr(item, NODEID, EMPTY_STRING)
-            if nodeid:
-                test_case_costs[nodeid] = 0.0
-                test_case_failures[nodeid] = 0
-                module_path = nodeid.split(NODEID_SEPARATOR)[0]
-                test_module_costs[module_path] = test_module_costs.get(
-                    module_path, 0.0
-                )
-                test_module_failures[module_path] = test_module_failures.get(
-                    module_path, 0
                 )
     # add current session failure data if available
     if _plugin.current_session_failures:
