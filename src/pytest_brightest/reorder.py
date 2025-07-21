@@ -368,7 +368,6 @@ class ReordererOfTests:
         """Reorder tests within each module by the specified technique."""
         module_items: Dict[str, List["Item"]] = {}
         module_order: List[str] = []
-        # iterate over each item and group them by module
         for item in items:
             nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
@@ -378,61 +377,78 @@ class ReordererOfTests:
                     module_order.append(module_path)
                 module_items[module_path].append(item)
         reordered_items = []
-        # if there are sorted modules, then add an extra newline
-        # to separate the diagnostic output from what appeared before
         if module_order:
             console.print()
-        # iterate over the modules and reorder the tests within each module
         for module in module_order:
             console.print(
                 f"{FLASHLIGHT_PREFIX} Reordering tests in module {module}"
             )
-            # reordering the test suite according to the recorded
-            # cost of the test cases inside of each module
             if reorder_by == COST:
-                module_items[module].sort(
-                    key=self.get_test_total_duration, reverse=not ascending
-                )
-                # extract the node ID for the "cheapest" (i.e., lowest cost)
-                # test case and display it for diagnostic purposes and then
-                # do the same thing for the "most expensive" test case (i.e.,
-                # the test case that has the highest cost)
-                if module_items[module]:
-                    cheapest_test = module_items[module][0]
-                    console.print(
-                        f"{INDENT} Cheapest test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
-                    )
-                    most_expensive_test = module_items[module][-1]
-                    console.print(
-                        f"{INDENT} Most expensive test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
-                    )
+                self._reorder_module_by_cost(module_items[module], ascending)
             elif reorder_by == NAME:
-                # when sorting by name, the direction can be ascending or descending
-                # and the key for sorting is the nodeid of the test item
-                if ascending:
-                    module_items[module].sort(
-                        key=lambda item: getattr(item, NODEID, EMPTY_STRING),
-                        reverse=False,
-                    )
-                else:
-                    module_items[module].sort(
-                        key=lambda item: getattr(item, NODEID, EMPTY_STRING),
-                        reverse=True,
-                    )
-                # display the diagnostic about first and last test in module, using the
-                # same approach for cost, but using a different initial label
-                if module_items[module]:
-                    cheapest_test = module_items[module][0]
-                    console.print(
-                        f"{INDENT} First by-name test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
-                    )
-                    most_expensive_test = module_items[module][-1]
-                    console.print(
-                        f"{INDENT} Last by-name test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
-                    )
+                self._reorder_module_by_name(module_items[module], ascending)
+            elif reorder_by == FAILURE:
+                self._reorder_module_by_failure(
+                    module_items[module], ascending
+                )
             reordered_items.extend(module_items[module])
-        # replace the original list of items with the reordered list
         items[:] = reordered_items
+
+    def _reorder_module_by_cost(
+        self, module_items: List["Item"], ascending: bool
+    ) -> None:
+        """Reorder a module's tests by cost."""
+        module_items.sort(
+            key=self.get_test_total_duration, reverse=not ascending
+        )
+        if module_items:
+            cheapest_test = module_items[0]
+            console.print(
+                f"{INDENT} Cheapest test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+            )
+            most_expensive_test = module_items[-1]
+            console.print(
+                f"{INDENT} Most expensive test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_name(
+        self, module_items: List["Item"], ascending: bool
+    ) -> None:
+        """Reorder a module's tests by name."""
+        module_items.sort(
+            key=lambda item: getattr(item, NODEID, EMPTY_STRING),
+            reverse=not ascending,
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-name test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-name test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_failure(
+        self, module_items: List["Item"], ascending: bool
+    ) -> None:
+        """Reorder a module's tests by failure."""
+        passing_tests, failing_tests = self.classify_tests_by_outcome(
+            module_items
+        )
+        if ascending:
+            module_items[:] = passing_tests + failing_tests
+        else:
+            module_items[:] = failing_tests + passing_tests
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-failure test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-failure test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
 
     def reorder_tests_in_place(
         self, items: List["Item"], reorder_by: str, reorder: str, focus: str
