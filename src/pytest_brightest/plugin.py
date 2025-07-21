@@ -113,18 +113,27 @@ class BrightestPlugin:
             # depending on the specific focus that was specified
             self.shuffle_enabled = True
             self.shuffle_by = self.focus
+            # use a default focus if none was specified;
+            # in this case, the shuffling will simply shuffle
+            # all of the tests cases within the suite, not
+            # considering the boundaries of the modules
             if self.shuffle_by is None:
-                # self.shuffle_by = TESTS_ACROSS_MODULES
                 self.shuffle_by = TESTS_WITHIN_SUITE
+            # use the specified see if it was given on the command-line;
+            # otherwise, generate a random seed for test shuffling
             seed_option = config.getoption("--seed", None)
             if seed_option is not None:
                 self.seed = int(seed_option)
             else:
                 self.seed = generate_random_seed()
+            # create the shuffler object with the specified seed
             self.shuffler = ShufflerOfTests(self.seed)
             console.print(
                 f"{FLASHLIGHT_PREFIX} Shuffling tests by {self.shuffle_by} with seed {self.seed}"
             )
+            # alert the person using this plugin to the fact that
+            # they cannot specify a direction for shuffling as this
+            # is not a valid configuration of a reordering technique
             if self.direction is not None:
                 console.print(
                     f"{HIGH_BRIGHTNESS_PREFIX} Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
