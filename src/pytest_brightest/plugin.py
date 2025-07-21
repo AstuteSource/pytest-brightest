@@ -76,6 +76,7 @@ class BrightestPlugin:
         self.focus: Optional[str] = None
         self.direction: Optional[str] = None
         self.historical_brightest_data: List[Dict[str, Any]] = []
+        self.repeat_count = 1
 
     def configure(self, config: Config) -> None:
         """Configure the plugin based on command-line options."""
@@ -151,6 +152,7 @@ class BrightestPlugin:
             console.print(
                 f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
             )
+        self.repeat_count = config.getoption("--repeat")
 
     def record_test_failure(self, nodeid: str) -> None:
         """Record a test failure for the current session."""
@@ -256,6 +258,12 @@ def pytest_addoption(parser: Parser) -> None:
         default=ASCENDING,
         help="Reordered tests in ascending or descending order",
     )
+    group.addoption(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Set the number of times to repeat each test",
+    )
 
 
 def pytest_configure(config: Config) -> None:
@@ -286,6 +294,16 @@ def pytest_collection_modifyitems(config: Config, items: List[Item]) -> None:
         # --> Use the shuffling technique
         elif _plugin.shuffle_enabled:
             _plugin.shuffle_tests(items)
+
+
+def pytest_generate_tests(metafunc: Any) -> None:
+    """Generate (multiple) parametrized calls to a test function."""
+    if _plugin.enabled and _plugin.repeat_count > 1:
+        # repeat the test execution for the specified number of times
+        metafunc.fixturenames.append("__pytest_repeat_step_number")
+        metafunc.parametrize(
+            "__pytest_repeat_step_number", range(_plugin.repeat_count)
+        )
 
 
 def pytest_runtest_logreport(report: TestReport) -> None:
