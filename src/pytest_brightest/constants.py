@@ -60,7 +60,9 @@ RATIO = "ratio"
 
 # define constants for tie-breaking
 TIE_BREAK_BY = "tie_break_by"
-DEFAULT_TIE_BREAKERS = []
+INVERSE_COST = "inverse-cost"
+INVERSE_FAILURE = "inverse-failure"
+DEFAULT_TIE_BREAKERS: list[str] = []
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"

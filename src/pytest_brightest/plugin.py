@@ -30,6 +30,8 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     FOCUS,
     HIGH_BRIGHTNESS_PREFIX,
+    INVERSE_COST,
+    INVERSE_FAILURE,
     MAX_RUNS,
     MODULES_WITHIN_SUITE,
     NAME,
@@ -311,7 +313,7 @@ def pytest_addoption(parser: Parser) -> None:
     group.addoption(
         "--tie-break-by",
         action="append",
-        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO],
+        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO, INVERSE_COST, INVERSE_FAILURE],
         default=[],
         help="Tie-breaking methods for reordering (can be specified multiple times)",
     )

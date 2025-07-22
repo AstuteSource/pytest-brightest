@@ -24,6 +24,8 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
     INDENT,
+    INVERSE_COST,
+    INVERSE_FAILURE,
     JSON_REPORT_FILE,
     MIN_COST_THRESHOLD,
     MODULE_FAILURE_COUNTS,
@@ -664,14 +666,33 @@ class ReordererOfTests:
                     key=lambda item: getattr(item, NODEID, EMPTY_STRING),
                     reverse=not ascending,
                 )
+            elif tie_breaker == INVERSE_COST:
+                tied_items.sort(
+                    key=lambda item: (
+                        1.0 / self.get_test_total_duration(item)
+                        if self.get_test_total_duration(item) > 0
+                        else float("inf")
+                    ),
+                    reverse=not ascending,
+                )
+            elif tie_breaker == INVERSE_FAILURE:
+                tied_items.sort(
+                    key=lambda item: (
+                        1.0 / self.get_test_failure_count(item)
+                        if self.get_test_failure_count(item) > 0
+                        else float("inf")
+                    ),
+                    reverse=not ascending,
+                )
             elif tie_breaker == SHUFFLE:
                 random.shuffle(tied_items)
                 break  # Shuffle is final, no need for further tie-breaking
             # check if ties are resolved after this tie-breaker
             # group by current values to see if we still have ties
             if tie_breaker != SHUFFLE:
-                tie_groups = defaultdict(list)
+                tie_groups: defaultdict[Any, list] = defaultdict(list)
                 for item in tied_items:
+                    value: Any
                     if tie_breaker == COST:
                         value = self.get_test_total_duration(item)
                     elif tie_breaker == FAILURE:
@@ -680,6 +701,10 @@ class ReordererOfTests:
                         value = self.get_test_failure_to_cost_ratio(item)
                     elif tie_breaker == NAME:
                         value = getattr(item, NODEID, EMPTY_STRING)
+                    elif tie_breaker == INVERSE_COST:
+                        value = -self.get_test_total_duration(item)
+                    elif tie_breaker == INVERSE_FAILURE:
+                        value = -self.get_test_failure_count(item)
                     else:
                         value = self.get_test_total_duration(item)
                     tie_groups[value].append(item)
