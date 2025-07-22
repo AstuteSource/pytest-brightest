@@ -44,8 +44,10 @@ from .constants import (
     TECHNIQUE,
     TEST_CASE_COSTS,
     TEST_CASE_FAILURES,
+    TEST_CASE_RATIOS,
     TEST_MODULE_COSTS,
     TEST_MODULE_FAILURES,
+    TEST_MODULE_RATIOS,
     TESTCASES,
     TESTS_WITHIN_MODULE,
     TESTS_WITHIN_SUITE,
@@ -470,9 +472,16 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
             _plugin.session_items, _plugin.technique, _plugin.focus
         )
         # merge prior data with current data, but don't overwrite the new structure
+        # apply consistent sorting to ratio data like other data types
         for key, value in prior_data.items():
             if key not in brightest_data[DATA]:
-                brightest_data[DATA][key] = value
+                if key in [TEST_CASE_RATIOS, TEST_MODULE_RATIOS]:
+                    # sort ratio data consistently with costs and failures
+                    brightest_data[DATA][key] = _sort_dict_by_value(
+                        value, str(_plugin.direction)
+                    )
+                else:
+                    brightest_data[DATA][key] = value
     return brightest_data
 
 

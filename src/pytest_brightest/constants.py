@@ -94,7 +94,7 @@ TEST_CASE_RATIOS = "test_case_ratios"
 TEST_MODULE_RATIOS = "test_module_ratios"
 
 # define constants for ratio calculation
-FAILURE_BASE_WEIGHT = 10
+FAILURE_BASE_WEIGHT = 1
 FAILURE_MULTIPLIER = 10
 MIN_COST_THRESHOLD = 0.00001
 
