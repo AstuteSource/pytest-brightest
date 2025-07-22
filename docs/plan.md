@@ -406,7 +406,7 @@ duplication.
    `get_prior_data_for_reordering` and `pytest_sessionfinish` into smaller,
 more manageable helper functions.
 
-### Experimental Evaluation Plan (2025-07-22)
+### Experimental Evaluation Plan to Consider for Later (2025-07-22)
 
 **Goal:** To empirically evaluate the effectiveness of the `pytest-brightest`
 plugin in improving the regression testing process.
@@ -459,7 +459,7 @@ calculate the APFD score.
    effectiveness of each reordering technique implemented in
 `pytest-brightest`.
 
-### Novel Experimental Evaluation Plan (2025-07-22)
+### Novel Experimental Evaluation Plan to Consider for Later (2025-07-22)
 
 **Goal:** To devise an easier yet equally convincing experimental plan for
 evaluating the `pytest-brightest` plugin.
