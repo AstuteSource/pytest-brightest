@@ -114,6 +114,7 @@ All test cases should follow these standards:
 - Test cases should aim to achieve full function, statement, and branch
   coverage.
 - Property-based tests must be marked with `@pytest.mark.property`.
+- Test cases should not produce any console output.
 
 ## Making Changes
 
