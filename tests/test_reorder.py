@@ -116,6 +116,7 @@ def test_tie_breaking_with_inverse_cost(mock_test_item):
 
     # Mock the methods to return equal ratios but different costs
     def mock_get_ratio(item):
+        _ = item
         return 0.5  # all have equal ratio
 
     def mock_get_cost(item):
@@ -156,6 +157,7 @@ def test_tie_breaking_with_inverse_failure(mock_test_item):
 
     # Mock the methods to return equal ratios but different failure counts
     def mock_get_ratio(item):
+        _ = item
         return 1.0  # all have equal ratio
 
     def mock_get_failure(item):
@@ -196,6 +198,7 @@ def test_tie_breaking_with_inverse_name(mock_test_item):
 
     # Mock the methods to return equal ratios
     def mock_get_ratio(item):
+        _ = item
         return 1.0  # all have equal ratio
 
     reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
@@ -231,6 +234,7 @@ def test_tie_breaking_with_inverse_name(mock_test_item):
 
 def test_tie_breaking_without_ties(mock_test_item, mocker):
     """Test that tie-breaking doesn't interfere when there are no ties."""
+    _ = mocker
     # Create a reorderer
     reorderer = ReordererOfTests()
     # Create mock items with different ratios
@@ -248,6 +252,7 @@ def test_tie_breaking_without_ties(mock_test_item, mocker):
         return ratios.get(item.nodeid, 0.0)
 
     def mock_get_cost(item):
+        _ = item
         return 0.5  # Equal costs
 
     reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
@@ -1069,6 +1074,7 @@ def test_tie_breaking_with_name_tie_breaker(mock_test_item):
 
     # Mock methods to return equal primary values
     def mock_get_ratio(item):
+        _ = item
         return 1.0  # All equal
 
     reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
@@ -1098,6 +1104,7 @@ def test_tie_breaking_with_shuffle(mock_test_item, mocker):
 
     # Mock methods to return equal primary values
     def mock_get_ratio(item):
+        _ = item
         return 1.0  # All equal
 
     reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
