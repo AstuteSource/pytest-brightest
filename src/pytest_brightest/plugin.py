@@ -313,7 +313,15 @@ def pytest_addoption(parser: Parser) -> None:
     group.addoption(
         "--tie-break-by",
         action="append",
-        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO, INVERSE_COST, INVERSE_FAILURE],
+        choices=[
+            SHUFFLE,
+            NAME,
+            COST,
+            FAILURE,
+            RATIO,
+            INVERSE_COST,
+            INVERSE_FAILURE,
+        ],
         default=[],
         help="Tie-breaking methods for reordering (can be specified multiple times)",
     )
