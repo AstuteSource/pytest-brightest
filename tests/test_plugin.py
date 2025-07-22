@@ -223,7 +223,7 @@ class TestBrightestPlugin:
         )
         plugin.configure(config)
         mock_console_print.assert_any_call(
-            ":flashlight: pytest-brightest: Repeating all tests 3 times"
+            ":flashlight: pytest-brightest: Repeating the run of each test 3 times"
         )
         mock_console_print.assert_any_call(
             ":flashlight: pytest-brightest: Repeating each failed tests 2 times"
