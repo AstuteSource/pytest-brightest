@@ -183,6 +183,51 @@ def test_tie_breaking_with_inverse_failure(mock_test_item):
     assert actual_order == expected_order
 
 
+def test_tie_breaking_with_inverse_name(mock_test_item):
+    """Test that tie-breaking works with inverse-name (reverse alphabetical order)."""
+    reorderer = ReordererOfTests()
+    # Create mock items with equal ratios but different names
+    items = [
+        mock_test_item("test_alpha.py::test_function"),
+        mock_test_item("test_beta.py::test_function"),
+        mock_test_item("test_zebra.py::test_function"),
+    ]
+
+    # Mock the methods to return equal ratios
+    def mock_get_ratio(item):
+        return 1.0  # all have equal ratio
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
+
+    # Test tie-breaking with inverse-name (reverse order when ascending)
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(
+        items_copy, "ratio", True, "inverse-name"
+    )
+    # When ascending=True with inverse-name, should sort in reverse alphabetical order
+    expected_order = [
+        "test_zebra.py::test_function",
+        "test_beta.py::test_function",
+        "test_alpha.py::test_function",
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
+
+    # Test tie-breaking with inverse-name (reverse order when descending)
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(
+        items_copy, "ratio", False, "inverse-name"
+    )
+    # When ascending=False with inverse-name, should sort in alphabetical order
+    expected_order = [
+        "test_alpha.py::test_function",
+        "test_beta.py::test_function",
+        "test_zebra.py::test_function",
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
+
+
 def test_tie_breaking_without_ties(mock_test_item, mocker):
     """Test that tie-breaking doesn't interfere when there are no ties."""
     # Create a reorderer
@@ -675,6 +720,57 @@ class TestReordererOfTests:
             "mod_a::test2",
         ]
 
+    def test_modules_within_suite_tie_breaking_with_inverse_name(
+        self, mock_test_item, mocker
+    ):
+        """Test modules-within-suite focus with inverse-name tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod_a::test1": {"total_duration": 0.0, "outcome": "passed"},
+            "mod_b::test2": {"total_duration": 0.0, "outcome": "passed"},
+            "mod_c::test3": {"total_duration": 0.0, "outcome": "passed"},
+        }
+
+        items = [
+            mock_test_item("mod_a::test1"),
+            mock_test_item("mod_b::test2"),
+            mock_test_item("mod_c::test3"),
+        ]
+
+        # Test with ratio technique - all modules have 0.0 ratio, should use inverse-name tie-breaker (ascending)
+        reorderer.reorder_tests_in_place(
+            items, "ratio", "ascending", "modules-within-suite", "inverse-name"
+        )
+
+        # Should be ordered by module name in reverse order: mod_c, mod_b, mod_a (reverse alphabetical when ascending)
+        assert [item.name for item in items] == [
+            "mod_c::test3",
+            "mod_b::test2",
+            "mod_a::test1",
+        ]
+
+        # Test with descending order
+        items = [
+            mock_test_item("mod_a::test1"),
+            mock_test_item("mod_b::test2"),
+            mock_test_item("mod_c::test3"),
+        ]
+        reorderer.reorder_tests_in_place(
+            items,
+            "ratio",
+            "descending",
+            "modules-within-suite",
+            "inverse-name",
+        )
+
+        # Should be ordered by module name in alphabetical order: mod_a, mod_b, mod_c (alphabetical when descending)
+        assert [item.name for item in items] == [
+            "mod_a::test1",
+            "mod_b::test2",
+            "mod_c::test3",
+        ]
+
     def test_modules_within_suite_tie_breaking_with_cost(
         self, mock_test_item, mocker
     ):
@@ -783,6 +879,36 @@ class TestReordererOfTests:
             "mod1::test_a",
             "mod1::test_b",
             "mod1::test_c",
+        ]
+
+    def test_tests_within_module_tie_breaking_with_inverse_name(
+        self, mock_test_item, mocker
+    ):
+        """Test tests-within-module focus with inverse-name tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test_a": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test_b": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test_c": {"total_duration": 1.0, "outcome": "passed"},
+        }
+
+        items = [
+            mock_test_item("mod1::test_a"),
+            mock_test_item("mod1::test_b"),
+            mock_test_item("mod1::test_c"),
+        ]
+
+        # Test with ratio technique - all tests have same ratio (0), should use inverse-name tie-breaker
+        reorderer.reorder_tests_in_place(
+            items, "ratio", "ascending", "tests-within-module", "inverse-name"
+        )
+
+        # Should be ordered by test name in reverse: test_c, test_b, test_a (when ascending=True)
+        assert [item.name for item in items] == [
+            "mod1::test_c",
+            "mod1::test_b",
+            "mod1::test_a",
         ]
 
     def test_tests_within_module_tie_breaking_with_failure(

@@ -26,6 +26,7 @@ from .constants import (
     INDENT,
     INVERSE_COST,
     INVERSE_FAILURE,
+    INVERSE_NAME,
     JSON_REPORT_FILE,
     MIN_COST_THRESHOLD,
     MODULE_FAILURE_COUNTS,
@@ -707,6 +708,8 @@ class ReordererOfTests:
             self._resolve_module_ties_by_inverse_failure(
                 tied_modules, ascending
             )
+        elif tie_breaker == INVERSE_NAME:
+            tied_modules.sort(reverse=ascending)
         elif tie_breaker == SHUFFLE:
             random.shuffle(tied_modules)
         else:
@@ -872,6 +875,12 @@ class ReordererOfTests:
                     else float("inf")
                 ),
                 reverse=not ascending,
+            )
+        # --> resolve ties by inverse name, which sorts by nodeid in reverse order
+        elif tie_breaker == INVERSE_NAME:
+            tied_items.sort(
+                key=lambda item: getattr(item, NODEID, EMPTY_STRING),
+                reverse=ascending,
             )
         # --> resolve ties randomly by shuffling
         # the portions of the test suite

@@ -61,6 +61,7 @@ RATIO = "ratio"
 TIE_BREAK_BY = "tie_break_by"
 INVERSE_COST = "inverse-cost"
 INVERSE_FAILURE = "inverse-failure"
+INVERSE_NAME = "inverse-name"
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
