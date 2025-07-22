@@ -352,7 +352,10 @@ class ReordererOfTests:
         return prior_data
 
     def reorder_modules_by_cost(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their cumulative cost."""
         module_costs: Dict[str, float] = {}
@@ -370,11 +373,12 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
-        # sort the modules by their cumulative cost
-        sorted_modules = sorted(
-            module_costs.keys(),
-            key=lambda m: module_costs[m],
-            reverse=not ascending,
+        # sort the modules by their cumulative cost with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_costs.keys()),
+            lambda m: module_costs[m],
+            tie_breaker,
+            ascending,
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
@@ -393,7 +397,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_name(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their name."""
         module_items: Dict[str, List["Item"]] = {}
@@ -405,8 +412,13 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
-        # sort the modules by their name
-        sorted_modules = sorted(module_items.keys(), reverse=not ascending)
+        # sort the modules by their name with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_items.keys()),
+            lambda m: m,  # sort by module name itself
+            tie_breaker,
+            ascending,
+        )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
@@ -422,7 +434,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_failure(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their number of failing tests from previous runs."""
         module_failure_counts: Dict[str, int] = {}
@@ -441,11 +456,12 @@ class ReordererOfTests:
                 module_items[module_path].append(item)
         # store the failure counts for potential use in reporting
         self.last_module_failure_counts = module_failure_counts
-        # sort the modules by their failure count
-        sorted_modules = sorted(
-            module_failure_counts.keys(),
-            key=lambda m: module_failure_counts[m],
-            reverse=not ascending,
+        # sort the modules by their failure count with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_failure_counts.keys()),
+            lambda m: module_failure_counts[m],
+            tie_breaker,
+            ascending,
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
@@ -462,7 +478,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_ratio(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their failure-to-cost ratio using saved data."""
         module_items: Dict[str, List["Item"]] = {}
@@ -479,11 +498,12 @@ class ReordererOfTests:
                         self.get_module_failure_to_cost_ratio(module_path)
                     )
                 module_items[module_path].append(item)
-        # sort the modules by their saved ratios
-        sorted_modules = sorted(
-            module_ratios.keys(),
-            key=lambda m: module_ratios[m],
-            reverse=not ascending,
+        # sort the modules by their saved ratios with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_ratios.keys()),
+            lambda m: module_ratios[m],
+            tie_breaker,
+            ascending,
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
@@ -502,7 +522,11 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_tests_within_module(
-        self, items: List["Item"], reorder_by: str, ascending: bool = True
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder tests within each module by the specified technique."""
         module_items: Dict[str, List["Item"]] = {}
@@ -523,24 +547,33 @@ class ReordererOfTests:
                 f"{FLASHLIGHT_PREFIX} Reordering tests in module {module}"
             )
             if reorder_by == COST:
-                self._reorder_module_by_cost(module_items[module], ascending)
+                self._reorder_module_by_cost(
+                    module_items[module], ascending, tie_breaker
+                )
             elif reorder_by == NAME:
-                self._reorder_module_by_name(module_items[module], ascending)
+                self._reorder_module_by_name(
+                    module_items[module], ascending, tie_breaker
+                )
             elif reorder_by == FAILURE:
                 self._reorder_module_by_failure(
-                    module_items[module], ascending
+                    module_items[module], ascending, tie_breaker
                 )
             elif reorder_by == RATIO:
-                self._reorder_module_by_ratio(module_items[module], ascending)
+                self._reorder_module_by_ratio(
+                    module_items[module], ascending, tie_breaker
+                )
             reordered_items.extend(module_items[module])
         items[:] = reordered_items
 
     def _reorder_module_by_cost(
-        self, module_items: List["Item"], ascending: bool
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder a module's tests by cost."""
-        module_items.sort(
-            key=self.get_test_total_duration, reverse=not ascending
+        self._sort_with_tie_breaking(
+            module_items, self.get_test_total_duration, tie_breaker, ascending
         )
         if module_items:
             cheapest_test = module_items[0]
@@ -553,12 +586,17 @@ class ReordererOfTests:
             )
 
     def _reorder_module_by_name(
-        self, module_items: List["Item"], ascending: bool
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder a module's tests by name."""
-        module_items.sort(
-            key=lambda item: getattr(item, NODEID, EMPTY_STRING),
-            reverse=not ascending,
+        self._sort_with_tie_breaking(
+            module_items,
+            lambda item: getattr(item, NODEID, EMPTY_STRING),
+            tie_breaker,
+            ascending,
         )
         if module_items:
             first_test = module_items[0]
@@ -571,11 +609,14 @@ class ReordererOfTests:
             )
 
     def _reorder_module_by_failure(
-        self, module_items: List["Item"], ascending: bool
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder a module's tests by failure."""
-        module_items.sort(
-            key=self.get_test_failure_count, reverse=not ascending
+        self._sort_with_tie_breaking(
+            module_items, self.get_test_failure_count, tie_breaker, ascending
         )
         if module_items:
             first_test = module_items[0]
@@ -588,11 +629,17 @@ class ReordererOfTests:
             )
 
     def _reorder_module_by_ratio(
-        self, module_items: List["Item"], ascending: bool
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder a module's tests by failure-to-cost ratio."""
-        module_items.sort(
-            key=self.get_test_failure_to_cost_ratio, reverse=not ascending
+        self._sort_with_tie_breaking(
+            module_items,
+            self.get_test_failure_to_cost_ratio,
+            tie_breaker,
+            ascending,
         )
         if module_items:
             first_test = module_items[0]
@@ -603,6 +650,141 @@ class ReordererOfTests:
             console.print(
                 f"{INDENT} Last by-ratio test is {getattr(last_test, NODEID, EMPTY_STRING)}"
             )
+
+    def _sort_modules_with_tie_breaking(
+        self,
+        modules: List[str],
+        primary_key_func,
+        tie_breaker: Optional[str],
+        ascending: bool = True,
+    ) -> List[str]:
+        """Sort modules using primary key with tie-breaking for modules with equal values."""
+        if not tie_breaker:
+            # no tie-breaking, use simple sort
+            return sorted(modules, key=primary_key_func, reverse=not ascending)
+        # group modules by primary key value to detect ties
+        groups: defaultdict[Any, list] = defaultdict(list)
+        for module in modules:
+            primary_value = primary_key_func(module)
+            groups[primary_value].append(module)
+        # sort each group using tie-breaker
+        result = []
+        for primary_value in sorted(groups.keys(), reverse=not ascending):
+            group = groups[primary_value]
+            if len(group) == 1:
+                # no tie, add single module
+                result.extend(group)
+            else:
+                # handle ties using tie-breaker
+                self._resolve_module_ties(group, tie_breaker, ascending)
+                result.extend(group)
+        return result
+
+    def _resolve_module_ties(
+        self,
+        tied_modules: List[str],
+        tie_breaker: Optional[str],
+        ascending: bool,
+    ) -> None:
+        """Resolve ties between modules using the specified tie-breaking technique."""
+        if not tie_breaker or len(tied_modules) <= 1:
+            return
+        # apply the single tie-breaker
+        if tie_breaker == COST:
+            self._resolve_module_ties_by_cost(tied_modules, ascending)
+        elif tie_breaker == FAILURE:
+            self._resolve_module_ties_by_failure(tied_modules, ascending)
+        elif tie_breaker == RATIO:
+            tied_modules.sort(
+                key=self.get_module_failure_to_cost_ratio,
+                reverse=not ascending,
+            )
+        elif tie_breaker == NAME:
+            tied_modules.sort(reverse=not ascending)
+        elif tie_breaker == INVERSE_COST:
+            self._resolve_module_ties_by_inverse_cost(tied_modules, ascending)
+        elif tie_breaker == INVERSE_FAILURE:
+            self._resolve_module_ties_by_inverse_failure(
+                tied_modules, ascending
+            )
+        elif tie_breaker == SHUFFLE:
+            random.shuffle(tied_modules)
+        else:
+            random.shuffle(tied_modules)
+
+    def _resolve_module_ties_by_cost(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by cost."""
+        module_costs = {}
+        for module_path in tied_modules:
+            total_cost = 0.0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    total_cost += self.test_data[node_id].get(
+                        TOTAL_DURATION, 0.0
+                    )
+            module_costs[module_path] = total_cost
+        tied_modules.sort(key=lambda m: module_costs[m], reverse=not ascending)
+
+    def _resolve_module_ties_by_failure(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by failure count."""
+        module_failures = {}
+        for module_path in tied_modules:
+            failure_count = 0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    outcome = self.test_data[node_id].get(OUTCOME, UNKNOWN)
+                    if outcome in [FAILED, ERROR]:
+                        failure_count += 1
+            module_failures[module_path] = failure_count
+        tied_modules.sort(
+            key=lambda m: module_failures[m], reverse=not ascending
+        )
+
+    def _resolve_module_ties_by_inverse_cost(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by inverse cost."""
+        module_costs = {}
+        for module_path in tied_modules:
+            total_cost = 0.0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    total_cost += self.test_data[node_id].get(
+                        TOTAL_DURATION, 0.0
+                    )
+            module_costs[module_path] = total_cost
+        tied_modules.sort(
+            key=lambda m: (
+                1.0 / module_costs[m] if module_costs[m] > 0 else float("inf")
+            ),
+            reverse=not ascending,
+        )
+
+    def _resolve_module_ties_by_inverse_failure(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by inverse failure count."""
+        module_failures = {}
+        for module_path in tied_modules:
+            failure_count = 0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    outcome = self.test_data[node_id].get(OUTCOME, UNKNOWN)
+                    if outcome in [FAILED, ERROR]:
+                        failure_count += 1
+            module_failures[module_path] = failure_count
+        tied_modules.sort(
+            key=lambda m: (
+                1.0 / module_failures[m]
+                if module_failures[m] > 0
+                else float("inf")
+            ),
+            reverse=not ascending,
+        )
 
     def _sort_with_tie_breaking(
         self,
@@ -717,16 +899,18 @@ class ReordererOfTests:
         # reorder the modules within the suite by their cumulative cost
         if focus == MODULES_WITHIN_SUITE:
             if reorder_by == COST:
-                self.reorder_modules_by_cost(items, ascending)
+                self.reorder_modules_by_cost(items, ascending, tie_breaker)
             elif reorder_by == NAME:
-                self.reorder_modules_by_name(items, ascending)
+                self.reorder_modules_by_name(items, ascending, tie_breaker)
             elif reorder_by == FAILURE:
-                self.reorder_modules_by_failure(items, ascending)
+                self.reorder_modules_by_failure(items, ascending, tie_breaker)
             elif reorder_by == RATIO:
-                self.reorder_modules_by_ratio(items, ascending)
+                self.reorder_modules_by_ratio(items, ascending, tie_breaker)
         # reordering tests within a module
         elif focus == TESTS_WITHIN_MODULE:
-            self.reorder_tests_within_module(items, reorder_by, ascending)
+            self.reorder_tests_within_module(
+                items, reorder_by, ascending, tie_breaker
+            )
         # reorder the tests across all modules in the suite
         # elif focus == TESTS_ACROSS_MODULES:
         elif focus == TESTS_WITHIN_SUITE:
