@@ -127,13 +127,13 @@ def test_tie_breaking_with_inverse_cost(mock_test_item):
 
     reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
     reorderer.get_test_total_duration = mock_get_cost  # type: ignore[method-assign]
-    # Test tie-breaking with inverse-cost (expensive tests first when ascending)
+    # test tie-breaking with inverse-cost (expensive tests first when ascending)
     items_copy = items.copy()
     reorderer.reorder_tests_across_modules(
-        items_copy, "ratio", True, ["inverse-cost"]
+        items_copy, "ratio", True, "inverse-cost"
     )
-    # With mathematical inverse: expensive(1/2.0=0.5) first, medium(1/0.5=2.0), cheap(1/0.1=10.0) last
-    # When ascending=True, smallest inverse values come first
+    # with mathematical inverse: expensive(1/2.0=0.5) first, medium(1/0.5=2.0), cheap(1/0.1=10.0) last
+    # when ascending=True, smallest inverse values come first
     expected_order = [
         "test_expensive.py::test_function",
         "test_medium.py::test_function",
@@ -170,7 +170,7 @@ def test_tie_breaking_with_inverse_failure(mock_test_item):
     # Test tie-breaking with inverse-failure (high failure tests first when ascending)
     items_copy = items.copy()
     reorderer.reorder_tests_across_modules(
-        items_copy, "ratio", True, ["inverse-failure"]
+        items_copy, "ratio", True, "inverse-failure"
     )
     # With mathematical inverse: broken(1/10=0.1) first, flaky(1/2=0.5), stable(0→∞) last
     # When ascending=True, smallest inverse values come first
@@ -187,7 +187,6 @@ def test_tie_breaking_without_ties(mock_test_item, mocker):
     """Test that tie-breaking doesn't interfere when there are no ties."""
     # Create a reorderer
     reorderer = ReordererOfTests()
-
     # Create mock items with different ratios
     items = [
         mock_test_item("test_low.py::test_function"),
@@ -210,7 +209,7 @@ def test_tie_breaking_without_ties(mock_test_item, mocker):
 
     # Test primary sort by ratio (ascending)
     items_copy = items.copy()
-    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, ["cost"])
+    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, "cost")
 
     # Should be ordered by ratio: low(1.0), high(5.0)
     expected_order = [
@@ -615,3 +614,222 @@ class TestReordererOfTests:
             "mod1::test_fail",
             "mod1::test_fast",
         ]
+
+    def test_get_test_failure_to_cost_ratio(self, mock_test_item):
+        """Test getting the failure to cost ratio of a test."""
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "test_one": {"total_duration": 2.0, "outcome": "passed"}
+        }
+        reorderer.brightest_data = {
+            "data": {"test_case_failures": {"test_one": 4}}
+        }
+        item = mock_test_item("test_one")
+        # Ratio should be failures / cost = 4 / 2.0 = 2.0
+        assert reorderer.get_test_failure_to_cost_ratio(item) == pytest.approx(
+            2.0
+        )
+        item = mock_test_item("test_unknown")
+        # Unknown test should return 0.0
+        assert reorderer.get_test_failure_to_cost_ratio(item) == 0.0
+
+    def test_get_test_failure_to_cost_ratio_zero_cost(self, mock_test_item):
+        """Test getting the failure to cost ratio when cost is zero."""
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "test_zero_cost": {"total_duration": 0.0, "outcome": "passed"}
+        }
+        reorderer.brightest_data = {
+            "data": {"test_case_failures": {"test_zero_cost": 5}}
+        }
+        item = mock_test_item("test_zero_cost")
+        # When cost is 0, uses MIN_COST_THRESHOLD = 0.00001, so ratio = 5/0.00001 = 500000
+        ratio = reorderer.get_test_failure_to_cost_ratio(item)
+        assert ratio == pytest.approx(500000.0)
+
+    def test_get_module_failure_to_cost_ratio(self):
+        """Test getting the failure to cost ratio of a module."""
+        reorderer = ReordererOfTests()
+        reorderer.brightest_data = {
+            "data": {"test_module_ratios": {"test_module.py": 1.0}}
+        }
+        # Should return the saved ratio directly
+        ratio = reorderer.get_module_failure_to_cost_ratio("test_module.py")
+        assert ratio == 1.0
+
+    def test_get_module_failure_to_cost_ratio_zero_cost(self):
+        """Test getting module ratio when no saved data exists."""
+        reorderer = ReordererOfTests()
+        reorderer.brightest_data = {"data": {}}  # No saved ratios
+        ratio = reorderer.get_module_failure_to_cost_ratio("test_module.py")
+        assert ratio == 0.0
+
+    def test_load_test_data_success(self, tmp_path):
+        """Test successful loading of test data."""
+        json_path = tmp_path / "report.json"
+        data = {
+            "tests": [
+                {
+                    "nodeid": "test_example",
+                    "setup": {"duration": 0.1},
+                    "call": {"duration": 0.5},
+                    "teardown": {"duration": 0.2},
+                    "outcome": "passed",
+                }
+            ]
+        }
+        json_path.write_text(json.dumps(data))
+        reorderer = ReordererOfTests(str(json_path))
+        # Data should be loaded automatically in __init__
+        assert reorderer.has_test_data()
+        assert "test_example" in reorderer.test_data
+        assert reorderer.test_data["test_example"][
+            "total_duration"
+        ] == pytest.approx(0.8)
+
+    def test_reorder_modules_by_ratio(self, mock_test_item, mocker):
+        """Test reordering modules by their failure-to-cost ratio."""
+        reorderer = ReordererOfTests()
+        reorderer.brightest_data = {
+            "data": {
+                "test_module_ratios": {
+                    "mod1": 1.0,  # Higher ratio
+                    "mod2": 0.5,  # Lower ratio
+                }
+            }
+        }
+        items = [
+            mock_test_item("mod1::test1"),
+            mock_test_item("mod2::test1"),
+        ]
+        mocker.patch("pytest_brightest.reorder.console.print")
+        # Test ascending order (lower ratios first)
+        reorderer.reorder_modules_by_ratio(items, ascending=True)
+        assert [item.name for item in items] == [
+            "mod2::test1",  # ratio 0.5
+            "mod1::test1",  # ratio 1.0
+        ]
+        # Test descending order (higher ratios first)
+        reorderer.reorder_modules_by_ratio(items, ascending=False)
+        assert [item.name for item in items] == [
+            "mod1::test1",  # ratio 1.0
+            "mod2::test1",  # ratio 0.5
+        ]
+
+
+def test_tie_breaking_with_name_tie_breaker(mock_test_item):
+    """Test tie-breaking using name as the tie-breaker."""
+    reorderer = ReordererOfTests()
+    items = [
+        mock_test_item("test_zebra.py::test_function"),
+        mock_test_item("test_alpha.py::test_function"),
+        mock_test_item("test_beta.py::test_function"),
+    ]
+
+    # Mock methods to return equal primary values
+    def mock_get_ratio(item):
+        return 1.0  # All equal
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
+
+    # Test tie-breaking with name
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, "name")
+
+    # Should be sorted by name alphabetically
+    expected_order = [
+        "test_alpha.py::test_function",
+        "test_beta.py::test_function",
+        "test_zebra.py::test_function",
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
+
+
+def test_tie_breaking_with_shuffle(mock_test_item, mocker):
+    """Test tie-breaking using shuffle as the tie-breaker."""
+    reorderer = ReordererOfTests()
+    items = [
+        mock_test_item("test_a.py::test_function"),
+        mock_test_item("test_b.py::test_function"),
+        mock_test_item("test_c.py::test_function"),
+    ]
+
+    # Mock methods to return equal primary values
+    def mock_get_ratio(item):
+        return 1.0  # All equal
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
+
+    # Mock random.shuffle to control the order
+    mock_shuffle = mocker.patch("pytest_brightest.reorder.random.shuffle")
+
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(
+        items_copy, "ratio", True, "shuffle"
+    )
+
+    # Verify shuffle was called
+    mock_shuffle.assert_called_once()
+
+
+def test_tie_breaking_no_ties(mock_test_item):
+    """Test that tie-breaking is not needed when there are no ties."""
+    reorderer = ReordererOfTests()
+    items = [
+        mock_test_item("test_low.py::test_function"),
+        mock_test_item("test_high.py::test_function"),
+    ]
+
+    # Mock methods to return different primary values (no ties)
+    def mock_get_ratio(item):
+        ratios = {
+            "test_low.py::test_function": 1.0,
+            "test_high.py::test_function": 2.0,
+        }
+        return ratios.get(item.nodeid, 0.0)
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
+
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, "name")
+
+    # Should be ordered by primary key (ratio) since no ties
+    expected_order = [
+        "test_low.py::test_function",  # ratio 1.0
+        "test_high.py::test_function",  # ratio 2.0
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
+
+
+def test_reorder_tests_across_modules_with_ratio(mock_test_item):
+    """Test reordering tests across modules by ratio with tie-breaking."""
+    reorderer = ReordererOfTests()
+
+    # Mock the ratio calculation method
+    def mock_get_ratio(item):
+        ratios = {
+            "test_a.py::test_function": 3.0,  # highest
+            "test_b.py::test_function": 1.0,  # lowest
+            "test_c.py::test_function": 2.0,  # middle
+        }
+        return ratios.get(item.nodeid, 0.0)
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio  # type: ignore[method-assign]
+
+    items = [
+        mock_test_item("test_a.py::test_function"),
+        mock_test_item("test_b.py::test_function"),
+        mock_test_item("test_c.py::test_function"),
+    ]
+
+    # Test ascending order (lowest ratio first)
+    reorderer.reorder_tests_across_modules(items, "ratio", ascending=True)
+    expected_order = [
+        "test_b.py::test_function",  # ratio 1.0
+        "test_c.py::test_function",  # ratio 2.0
+        "test_a.py::test_function",  # ratio 3.0
+    ]
+    actual_order = [item.nodeid for item in items]
+    assert actual_order == expected_order
