@@ -178,7 +178,7 @@ class BrightestPlugin:
                 f"{FLASHLIGHT_PREFIX} Repeating the run of each test {self.repeat_count} times"
             )
             console.print(
-                f"{FLASHLIGHT_PREFIX} Cost data saved from run {_plugin.repeat_count} of each test"
+                f"{FLASHLIGHT_PREFIX} Cost data saved from run {self.repeat_count} of each test"
             )
         if self.repeat_failed_count > 0:
             console.print(
