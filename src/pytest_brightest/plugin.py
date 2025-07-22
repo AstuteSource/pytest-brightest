@@ -20,6 +20,7 @@ from .constants import (
     DATA,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
+    DEFAULT_TIE_BREAKERS,
     DESCENDING,
     DIRECTION,
     EMPTY_STRING,
@@ -81,11 +82,12 @@ class BrightestPlugin:
         self.technique: Optional[str] = None
         self.focus: Optional[str] = None
         self.direction: Optional[str] = None
+        self.tie_breakers: List[str] = DEFAULT_TIE_BREAKERS
         self.historical_brightest_data: List[Dict[str, Any]] = []
         self.repeat_count = 1
         self.repeat_failed_count = 0
 
-    def configure(self, config: Config) -> None:
+    def configure(self, config: Config) -> None:  # noqa: PLR0912
         """Configure the plugin based on command-line options."""
         # check if the plugin is enabled; if it is not
         # enabled then no further configuration steps are taken
@@ -156,9 +158,17 @@ class BrightestPlugin:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
-            console.print(
-                f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
-            )
+            # configure tie-breaking methods
+            self.tie_breakers = config.getoption("--tie-break-by", [])
+            if self.tie_breakers:
+                tie_break_str = ", ".join(self.tie_breakers)
+                console.print(
+                    f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus} and tie-breaking by {tie_break_str}"
+                )
+            else:
+                console.print(
+                    f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus}"
+                )
         self.repeat_count = config.getoption("--repeat")
         self.repeat_failed_count = config.getoption("--repeat-failed")
         # display diagnostic information about the two types of
@@ -211,7 +221,11 @@ class BrightestPlugin:
             and self.focus
         ):
             self.reorderer.reorder_tests_in_place(
-                items, self.reorder_by, self.reorder, self.focus
+                items,
+                self.reorder_by,
+                self.reorder,
+                self.focus,
+                self.tie_breakers,
             )
 
     def store_session_items(self, items: List[Item]) -> None:
@@ -293,6 +307,13 @@ def pytest_addoption(parser: Parser) -> None:
         type=int,
         default=0,
         help="Set the number of times to repeat a failed test",
+    )
+    group.addoption(
+        "--tie-break-by",
+        action="append",
+        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO],
+        default=[],
+        help="Tie-breaking methods for reordering (can be specified multiple times)",
     )
 
 

@@ -1,6 +1,8 @@
 """Test reordering functionality based on previous test behavior."""
 
 import json
+import random
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -38,6 +40,7 @@ from .constants import (
     REPORT_JSON,
     SETUP,
     SETUP_DURATION,
+    SHUFFLE,
     TEARDOWN,
     TEARDOWN_DURATION,
     TEST_CASE_COSTS,
@@ -599,10 +602,101 @@ class ReordererOfTests:
                 f"{INDENT} Last by-ratio test is {getattr(last_test, NODEID, EMPTY_STRING)}"
             )
 
-    def reorder_tests_in_place(
-        self, items: List["Item"], reorder_by: str, reorder: str, focus: str
+    def _sort_with_tie_breaking(
+        self,
+        items: List["Item"],
+        primary_key_func,
+        tie_breakers: List[str],
+        ascending: bool = True,
     ) -> None:
-        """Reorder tests in place based on the specified criteria."""
+        """Sort items using primary key with tie-breaking for items with equal values."""
+        if not tie_breakers:
+            # no tie-breaking, use simple sort
+            items.sort(key=primary_key_func, reverse=not ascending)
+            return
+        # group items by primary key value to detect ties
+        groups = defaultdict(list)
+        for item in items:
+            primary_value = primary_key_func(item)
+            groups[primary_value].append(item)
+        # sort each group using tie-breakers
+        result = []
+        for primary_value in sorted(groups.keys(), reverse=not ascending):
+            group = groups[primary_value]
+            if len(group) == 1:
+                # no tie, add single item
+                result.extend(group)
+            else:
+                # handle ties using tie-breakers
+                self._resolve_ties(group, tie_breakers, ascending)
+                result.extend(group)
+        # replace original list contents
+        items[:] = result
+
+    def _resolve_ties(  # noqa: PLR0912
+        self,
+        tied_items: List["Item"],
+        tie_breakers: List[str],
+        ascending: bool,
+    ) -> None:
+        """Resolve ties using the specified tie-breaking techniques."""
+        if not tie_breakers or len(tied_items) <= 1:
+            return
+        # apply tie-breakers in sequence
+        for tie_breaker in tie_breakers:
+            if len(tied_items) <= 1:
+                break
+            if tie_breaker == COST:
+                tied_items.sort(
+                    key=self.get_test_total_duration, reverse=not ascending
+                )
+            elif tie_breaker == FAILURE:
+                tied_items.sort(
+                    key=self.get_test_failure_count, reverse=not ascending
+                )
+            elif tie_breaker == RATIO:
+                tied_items.sort(
+                    key=self.get_test_failure_to_cost_ratio,
+                    reverse=not ascending,
+                )
+            elif tie_breaker == NAME:
+                tied_items.sort(
+                    key=lambda item: getattr(item, NODEID, EMPTY_STRING),
+                    reverse=not ascending,
+                )
+            elif tie_breaker == SHUFFLE:
+                random.shuffle(tied_items)
+                break  # Shuffle is final, no need for further tie-breaking
+            # check if ties are resolved after this tie-breaker
+            # group by current values to see if we still have ties
+            if tie_breaker != SHUFFLE:
+                tie_groups = defaultdict(list)
+                for item in tied_items:
+                    if tie_breaker == COST:
+                        value = self.get_test_total_duration(item)
+                    elif tie_breaker == FAILURE:
+                        value = self.get_test_failure_count(item)
+                    elif tie_breaker == RATIO:
+                        value = self.get_test_failure_to_cost_ratio(item)
+                    elif tie_breaker == NAME:
+                        value = getattr(item, NODEID, EMPTY_STRING)
+                    else:
+                        value = self.get_test_total_duration(item)
+                    tie_groups[value].append(item)
+                # if we still have ties, continue with next tie-breaker
+                # For now, keep the sorted order and continue
+
+    def reorder_tests_in_place(
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        reorder: str,
+        focus: str,
+        tie_breakers: Optional[List[str]] = None,
+    ) -> None:
+        """Reorder tests in place based on the specified criteria with optional tie-breaking."""
+        if tie_breakers is None:
+            tie_breakers = []
         # it is not possible to reorder an empty list of items
         if not items:
             return
@@ -624,28 +718,46 @@ class ReordererOfTests:
         # reorder the tests across all modules in the suite
         # elif focus == TESTS_ACROSS_MODULES:
         elif focus == TESTS_WITHIN_SUITE:
-            self.reorder_tests_across_modules(items, reorder_by, ascending)
+            self.reorder_tests_across_modules(
+                items, reorder_by, ascending, tie_breakers
+            )
 
     def reorder_tests_across_modules(
-        self, items: List["Item"], reorder_by: str, ascending: bool = True
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        ascending: bool = True,
+        tie_breakers: Optional[List[str]] = None,
     ) -> None:
-        """Reorder tests across all modules by the specified technique."""
+        """Reorder tests across all modules by the specified technique with tie-breaking."""
+        if tie_breakers is None:
+            tie_breakers = []
+
         # note that reordering all of the test cases across the modules
         # is like treating all of the test cases as being inside of one
         # big test suite, regardless of how they are grouped inside of
         # the modules (i.e., the individual files in the test suite)
         if reorder_by == COST:
-            items.sort(key=self.get_test_total_duration, reverse=not ascending)
+            self._sort_with_tie_breaking(
+                items, self.get_test_total_duration, tie_breakers, ascending
+            )
         elif reorder_by == NAME:
-            items.sort(
-                key=lambda item: getattr(item, NAME, EMPTY_STRING),
-                reverse=not ascending,
+            self._sort_with_tie_breaking(
+                items,
+                lambda item: getattr(item, NODEID, EMPTY_STRING),
+                tie_breakers,
+                ascending,
             )
         elif reorder_by == FAILURE:
-            items.sort(key=self.get_test_failure_count, reverse=not ascending)
+            self._sort_with_tie_breaking(
+                items, self.get_test_failure_count, tie_breakers, ascending
+            )
         elif reorder_by == RATIO:
-            items.sort(
-                key=self.get_test_failure_to_cost_ratio, reverse=not ascending
+            self._sort_with_tie_breaking(
+                items,
+                self.get_test_failure_to_cost_ratio,
+                tie_breakers,
+                ascending,
             )
 
     def has_test_data(self) -> bool:

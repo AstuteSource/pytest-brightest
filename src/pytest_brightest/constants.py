@@ -58,6 +58,10 @@ NAME = "name"
 COST = "cost"
 RATIO = "ratio"
 
+# define constants for tie-breaking
+TIE_BREAK_BY = "tie_break_by"
+DEFAULT_TIE_BREAKERS = []
+
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
 TESTS_WITHIN_MODULE = "tests-within-module"

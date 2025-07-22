@@ -280,7 +280,7 @@ class TestHooks:
         parser.getgroup.return_value = mocker.MagicMock()
         pytest_addoption(parser)
         assert parser.getgroup.called
-        assert parser.getgroup.return_value.addoption.call_count == 7
+        assert parser.getgroup.return_value.addoption.call_count == 8
 
     def test_pytest_configure(self, mocker, mock_config):
         """Test that the plugin is configured."""

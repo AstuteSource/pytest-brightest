@@ -613,3 +613,82 @@ class TestReordererOfTests:
         reorderer.reorder_tests_in_place(
             items, "ratio", "ascending", "tests-within-suite"
         )
+
+
+def test_tie_breaking_with_equal_ratios(mock_test_item, mocker):
+    """Test that tie-breaking works when tests have equal primary metric values."""
+    # Create a reorderer
+    reorderer = ReordererOfTests()
+
+    # Create mock items with equal ratios but different costs
+    items = [
+        mock_test_item("test_fast.py::test_function"),
+        mock_test_item("test_medium.py::test_function"),
+        mock_test_item("test_slow.py::test_function"),
+    ]
+
+    # Mock the methods to return equal ratios but different costs
+    def mock_get_ratio(item):
+        return 0.0  # All have equal ratio (no failures)
+
+    def mock_get_cost(item):
+        costs = {
+            "test_fast.py::test_function": 0.1,
+            "test_medium.py::test_function": 0.5,
+            "test_slow.py::test_function": 1.0,
+        }
+        return costs.get(item.nodeid, 0.0)
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio
+    reorderer.get_test_total_duration = mock_get_cost
+
+    # Test tie-breaking with cost (ascending - fast tests first)
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, ["cost"])
+
+    # Should be ordered by cost: fast(0.1), medium(0.5), slow(1.0)
+    expected_order = [
+        "test_fast.py::test_function",
+        "test_medium.py::test_function",
+        "test_slow.py::test_function",
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
+
+
+def test_tie_breaking_without_ties(mock_test_item, mocker):
+    """Test that tie-breaking doesn't interfere when there are no ties."""
+    # Create a reorderer
+    reorderer = ReordererOfTests()
+
+    # Create mock items with different ratios
+    items = [
+        mock_test_item("test_low.py::test_function"),
+        mock_test_item("test_high.py::test_function"),
+    ]
+
+    # Mock the methods to return different ratios
+    def mock_get_ratio(item):
+        ratios = {
+            "test_low.py::test_function": 1.0,  # Lower ratio
+            "test_high.py::test_function": 5.0,  # Higher ratio
+        }
+        return ratios.get(item.nodeid, 0.0)
+
+    def mock_get_cost(item):
+        return 0.5  # Equal costs
+
+    reorderer.get_test_failure_to_cost_ratio = mock_get_ratio
+    reorderer.get_test_total_duration = mock_get_cost
+
+    # Test primary sort by ratio (ascending)
+    items_copy = items.copy()
+    reorderer.reorder_tests_across_modules(items_copy, "ratio", True, ["cost"])
+
+    # Should be ordered by ratio: low(1.0), high(5.0)
+    expected_order = [
+        "test_low.py::test_function",
+        "test_high.py::test_function",
+    ]
+    actual_order = [item.nodeid for item in items_copy]
+    assert actual_order == expected_order
