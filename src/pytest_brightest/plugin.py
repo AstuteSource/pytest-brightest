@@ -20,7 +20,6 @@ from .constants import (
     DATA,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
-    DEFAULT_TIE_BREAKERS,
     DESCENDING,
     DIRECTION,
     EMPTY_STRING,
@@ -84,7 +83,7 @@ class BrightestPlugin:
         self.technique: Optional[str] = None
         self.focus: Optional[str] = None
         self.direction: Optional[str] = None
-        self.tie_breakers: List[str] = DEFAULT_TIE_BREAKERS
+        self.tie_breaker: Optional[str] = None
         self.historical_brightest_data: List[Dict[str, Any]] = []
         self.repeat_count = 1
         self.repeat_failed_count = 0
@@ -160,12 +159,11 @@ class BrightestPlugin:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
-            # configure tie-breaking methods
-            self.tie_breakers = config.getoption("--tie-break-by", [])
-            if self.tie_breakers:
-                tie_break_str = ", ".join(self.tie_breakers)
+            # configure tie-breaking method
+            self.tie_breaker = config.getoption("--tie-break-by")
+            if self.tie_breaker:
                 console.print(
-                    f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus} and tie-breaking by {tie_break_str}"
+                    f"{FLASHLIGHT_PREFIX} Reordering tests by {self.reorder_by} in {self.reorder} order with focus {self.focus} and tie-breaking by {self.tie_breaker}"
                 )
             else:
                 console.print(
@@ -227,7 +225,7 @@ class BrightestPlugin:
                 self.reorder_by,
                 self.reorder,
                 self.focus,
-                self.tie_breakers,
+                self.tie_breaker,
             )
 
     def store_session_items(self, items: List[Item]) -> None:
@@ -312,7 +310,6 @@ def pytest_addoption(parser: Parser) -> None:
     )
     group.addoption(
         "--tie-break-by",
-        action="append",
         choices=[
             SHUFFLE,
             NAME,
@@ -322,8 +319,7 @@ def pytest_addoption(parser: Parser) -> None:
             INVERSE_COST,
             INVERSE_FAILURE,
         ],
-        default=[],
-        help="Tie-breaking methods for reordering (can be specified multiple times)",
+        help="Tie-breaking method for reordering",
     )
 
 
