@@ -41,6 +41,7 @@ from .constants import (
     MODULE_TESTS,
     MODULES_WITHIN_SUITE,
     NAME,
+    NEWLINE,
     NODEID,
     NODEID_SEPARATOR,
     OUTCOME,
@@ -400,8 +401,8 @@ class ReordererOfTests:
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             # print out the cost of the module using no more than 5 fixed
@@ -439,8 +440,8 @@ class ReordererOfTests:
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
@@ -525,8 +526,8 @@ class ReordererOfTests:
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             # print out the ratio of the module using no more than 5 fixed
@@ -554,7 +555,7 @@ class ReordererOfTests:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
         console.print(
-            f"{FLASHLIGHT_PREFIX} Computing average costs across {len(self.historical_brightest_data)} historical runs"
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average costs across {len(self.historical_brightest_data)} historical runs"
         )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
@@ -563,8 +564,8 @@ class ReordererOfTests:
             ascending,
         )
         reordered_items = []
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         for module in sorted_modules:
             avg_cost = self.get_average_module_cost(module)
             console.print(
@@ -589,7 +590,7 @@ class ReordererOfTests:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
         console.print(
-            f"{FLASHLIGHT_PREFIX} Computing average failures across {len(self.historical_brightest_data)} historical runs"
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average failures across {len(self.historical_brightest_data)} historical runs"
         )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
@@ -598,8 +599,8 @@ class ReordererOfTests:
             ascending,
         )
         reordered_items = []
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         for module in sorted_modules:
             avg_failure = self.get_average_module_failure(module)
             console.print(
@@ -624,7 +625,7 @@ class ReordererOfTests:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
         console.print(
-            f"{FLASHLIGHT_PREFIX} Computing average ratios across {len(self.historical_brightest_data)} historical runs"
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average ratios across {len(self.historical_brightest_data)} historical runs"
         )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
@@ -633,8 +634,8 @@ class ReordererOfTests:
             ascending,
         )
         reordered_items = []
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         for module in sorted_modules:
             avg_ratio = self.get_average_module_ratio(module)
             console.print(
