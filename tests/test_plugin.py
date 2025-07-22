@@ -2,6 +2,7 @@
 
 # ruff: noqa: PLR2004
 
+from pytest_brightest.constants import MAX_RUNS
 from pytest_brightest.plugin import (
     BrightestPlugin,
     _get_brightest_data,
@@ -280,7 +281,7 @@ class TestHooks:
         parser.getgroup.return_value = mocker.MagicMock()
         pytest_addoption(parser)
         assert parser.getgroup.called
-        assert parser.getgroup.return_value.addoption.call_count == 8
+        assert parser.getgroup.return_value.addoption.call_count == 9
 
     def test_pytest_configure(self, mocker, mock_config):
         """Test that the plugin is configured."""
@@ -416,6 +417,7 @@ class TestHooks:
         mock_plugin.enabled = True
         mock_plugin.repeat_count = 1
         mock_plugin.brightest_json_file = "existent.json"
+        mock_plugin.max_runs = 25
         mock_plugin.technique = "cost"
         mock_plugin.focus = "tests-across-modules"
         mock_plugin.direction = "ascending"
@@ -463,6 +465,7 @@ class TestHooks:
         mock_plugin.enabled = True
         mock_plugin.repeat_count = 1
         mock_plugin.brightest_json_file = str(tmp_path / "report.json")
+        mock_plugin.max_runs = 25
         mock_plugin.technique = "failure"
         mock_plugin.focus = "modules-within-suite"
         mock_plugin.direction = "descending"
@@ -651,6 +654,7 @@ def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
     mock_plugin.enabled = True
     mock_plugin.repeat_count = 1
     mock_plugin.brightest_json_file = "test.json"
+    mock_plugin.max_runs = 25
     mock_plugin.technique = "shuffle"
     mock_plugin.focus = "tests-across-modules"
     mock_plugin.direction = None
@@ -715,6 +719,7 @@ def test_pytest_sessionfinish_max_runs_limit(mocker, mock_config):
     mock_plugin.enabled = True
     mock_plugin.repeat_count = 1
     mock_plugin.brightest_json_file = "test.json"
+    mock_plugin.max_runs = 25
     mock_plugin.technique = "shuffle"
     mock_plugin.focus = "tests-across-modules"
     mock_plugin.direction = None
@@ -989,3 +994,50 @@ def test_repeat_saves_final_run_performance_data():
     # this demonstrates that pytest-json-report behavior of overwriting by nodeid
     # means the final run's timing data is preserved, which corresponds directly
     # to the diagnostic output provided in the console when the tool is run
+
+
+class TestMaxTestRuns:
+    """Test the --max-test-runs feature."""
+
+    def test_configure_max_test_runs_default(self, mock_config, mocker):
+        """Test that max_runs defaults to MAX_RUNS when not specified."""
+        mocker.patch("pytest_brightest.plugin.console.print")
+        mocker.patch(
+            "pytest_brightest.plugin.setup_json_report_plugin",
+            return_value=True,
+        )
+        plugin = BrightestPlugin()
+        config = mock_config({"--brightest": True})
+        plugin.configure(config)
+        # should default to MAX_RUNS (25)
+        assert plugin.max_runs == MAX_RUNS
+
+    def test_configure_max_test_runs_custom(self, mock_config, mocker):
+        """Test that max_runs can be set via command-line argument."""
+        mocker.patch("pytest_brightest.plugin.console.print")
+        mocker.patch(
+            "pytest_brightest.plugin.setup_json_report_plugin",
+            return_value=True,
+        )
+        plugin = BrightestPlugin()
+        config = mock_config({"--brightest": True, "--max-test-runs": 5})
+        plugin.configure(config)
+        assert plugin.max_runs == 5
+
+    def test_configure_max_test_runs_diagnostic_message(
+        self, mock_config, mocker
+    ):
+        """Test that diagnostic message is shown for max-test-runs configuration."""
+        mock_console_print = mocker.patch(
+            "pytest_brightest.plugin.console.print"
+        )
+        mocker.patch(
+            "pytest_brightest.plugin.setup_json_report_plugin",
+            return_value=True,
+        )
+        plugin = BrightestPlugin()
+        config = mock_config({"--brightest": True, "--max-test-runs": 10})
+        plugin.configure(config)
+        mock_console_print.assert_any_call(
+            ":flashlight: pytest-brightest: Maximum number of test runs to store: 10"
+        )

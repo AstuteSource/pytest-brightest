@@ -53,6 +53,7 @@ class MockConfig:
             "--reorder-by-technique": None,
             "--reorder-by-focus": None,
             "--reorder-in-direction": None,
+            "--max-test-runs": None,
         }
         if name in defaults and name not in self.options:
             return defaults[name]

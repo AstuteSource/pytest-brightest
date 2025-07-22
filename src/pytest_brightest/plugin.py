@@ -88,6 +88,7 @@ class BrightestPlugin:
         self.historical_brightest_data: List[Dict[str, Any]] = []
         self.repeat_count = 1
         self.repeat_failed_count = 0
+        self.max_runs = MAX_RUNS
 
     def configure(self, config: Config) -> None:  # noqa: PLR0912
         """Configure the plugin based on command-line options."""
@@ -187,6 +188,13 @@ class BrightestPlugin:
             )
             console.print(
                 f"{FLASHLIGHT_PREFIX} Cost data saved from run {_plugin.repeat_count} of a failed test"
+            )
+        # configure the maximum number of test runs to store
+        max_runs_option = config.getoption("--max-test-runs", None)
+        if max_runs_option is not None:
+            self.max_runs = int(max_runs_option)
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Maximum number of test runs to store: {self.max_runs}"
             )
 
     def record_test_failure(self, nodeid: str) -> None:
@@ -322,6 +330,12 @@ def pytest_addoption(parser: Parser) -> None:
             INVERSE_NAME,
         ],
         help="Tie-breaking method for reordering",
+    )
+    group.addoption(
+        "--max-test-runs",
+        type=int,
+        default=None,
+        help="Maximum number of test runs to store in JSON file",
     )
 
 
@@ -561,9 +575,9 @@ def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
                     new_run_data[RUNCOUNT] = 1
                 # add the new run data
                 current_runs.append(new_run_data)
-                # keep only the most recent MAX_RUNS runs
-                if len(current_runs) > MAX_RUNS:
-                    current_runs[:] = current_runs[-MAX_RUNS:]
+                # keep only the most recent max_runs runs
+                if len(current_runs) > _plugin.max_runs:
+                    current_runs[:] = current_runs[-_plugin.max_runs :]
                 # update the data
                 data[BRIGHTEST] = current_runs
                 f.seek(0)
