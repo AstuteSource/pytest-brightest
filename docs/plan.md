@@ -387,6 +387,58 @@ Note: A software agent can add details about their plan in this subsection.
    `configure` method, change the diagnostic message to use `self.repeat_count`
 instead of `_plugin.repeat_count`.
 
+### Add Use of Historical Data (2025-07-22)
+
+- Right now the plugin can only look at data from the prior run of the tool when
+it reorders the test suite according to the command-line arguments.
+- Here is an example a command to use to explain what currently happens and what
+arguments and functions need to be added for this new feature: `uv run pytest
+--json-report --brightest --reorder-by-technique ratio --reorder-by-focus
+tests-within-module --reorder-in-direction descending --tie-break-by
+inverse-cost --max-test-runs 3 --verbose`.
+- Right now this command will only look at the prior run of the program when it
+reorders the tests within the module according to the ratio of failure count to
+the execution time of the tests within each module. It also uses the
+inverse-cost data, again from the prior run, to resolve any of the ties.
+- The tool needs a feature that can look at all prior runs of the tool
+as stored inside of the JSON file when it completes all of these steps:
+    - For any --reorder-by-technique that uses the prior run (e.g., cost,
+    failure, or ratio) there should be new options called "average-cost" and
+    "average-failure" and "average-ratio" that will be the average cost, number
+    of failures, or ratios across all of the runs stored in the JSON file.
+    - The description in the prior step should work correctly for:
+        - "modules-within-suite" focus
+        - "tests-within-module" focus
+        - "tests-within-suite" focus
+    - The "ascending" or "descending" direction should continue to work in
+    the same way, excepting the fact that it will be sorting the tests
+    according to the average cost, failure count, or ratio across all of the
+    runs stored in the JSON file.
+    - The tie-breaking should continue to work in the same way, excepting the
+    fact that it will be using the average cost, failure count, or ratio,
+    inverse cost, and inverse ratio, across all of the runs in the JSON
+    file. This means that there is the new for new values for the
+    --tie-break-by argument that can be used to specify the average cost,
+    average failure count, or average ratio or the inverses. So,
+    for instance, they would be overall called:
+        - `average-cost`
+        - `average-failure`
+        - `average-ratio`
+        - `inverse-average-cost`
+        - `inverse-average-failure`
+        - `inverse-average-ratio`
+    The --max-test-runs argument should continue to work in the same way,
+    as it controls how many prior runs are stored in the JSON file, giving
+    the person using the program the ability to override the default of
+    25, which is hard-coded into the tool.
+- In summary, this tool should examine and leverage as part of the computation
+_all available data_ in the JSON file, not just the prior run of the tool. So,
+as an example, if there are 10 test case costs for each test, then the tool
+should take the average of those test test case costs and use it to reorder
+the tests according to whatever else is specified in the command-line.
+- Ultimately, this feature needs to be added across all meaningful combination
+of command-lines arguments for the pytest-brightest plugin.
+
 ### Code Quality Improvements to Consider for Later (2025-07-22)
 
 1. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
