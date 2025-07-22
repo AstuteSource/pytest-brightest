@@ -305,7 +305,7 @@ useful for future software agents who work on this project.
 
 Note: A software agent can add details about their plan in this subsection.
 
-### Implement --repeat feature (2025-07-21)
+### DONE: Implement --repeat feature (2025-07-21)
 
 1. Add a new command-line argument `--repeat` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times each test should be repeated.
 2. In the `BrightestPlugin.configure` method, read the value of the `--repeat` argument and store it in a new instance variable, e.g., `self.repeat_count`.
@@ -315,7 +315,7 @@ Note: A software agent can add details about their plan in this subsection.
 6. Add a new test case in `tests/test_plugin.py` to verify that the `--repeat` functionality works as expected. This test should check that the number of items is correctly multiplied.
 7. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
 
-### Implement --repeat-failed feature (2025-07-21)
+### DONE: Implement --repeat-failed feature (2025-07-21)
 
 1. Add a new command-line argument `--repeat-failed` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times a failed test should be repeated.
 2. In the `BrightestPlugin.configure` method, read the value of the `--repeat-failed` argument and store it in a new instance variable, e.g., `self.repeat_failed_count`.
@@ -326,7 +326,7 @@ Note: A software agent can add details about their plan in this subsection.
 7. Add new test cases in `tests/test_plugin.py` to verify that the `--repeat-failed` functionality works as expected. This test should check that a failing test is re-run and that a passing test is not.
 8. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
 
-### Implement ratio-based reordering technique (2025-07-21)
+### DONE: Implement ratio-based reordering technique (2025-07-21)
 
 **Goal**: Implement a new "ratio" reordering technique that uses both cost and failure data by calculating the ratio between failure counts and test execution costs.
 
@@ -379,7 +379,7 @@ Note: A software agent can add details about their plan in this subsection.
 - Preserve existing behavior: all current reordering techniques must continue working unchanged
 - Diagnostic output: provide clear information about calculated ratios during reordering
 
-### Code Quality Improvements (2025-07-22)
+### DONE: Code Quality Improvements (2025-07-22)
 
 1. [X] **Remove Redundant Constant:** Delete the duplicate definition of `NODEID`
    in `src/pytest_brightest/constants.py`.
