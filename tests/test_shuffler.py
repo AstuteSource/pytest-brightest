@@ -294,3 +294,28 @@ def test_shuffle_files_in_place_noop():
     items = []
     shuffler.shuffle_files_in_place(items)
     assert items == []
+
+
+def test_shuffle_tests_noop():
+    """Test shuffle_tests with empty list does nothing."""
+    shuffler = ShufflerOfTests(seed=SEED_42)
+    items = []
+    shuffled = shuffler.shuffle_tests(items)
+    assert shuffled == []
+
+
+def test_shuffle_with_unknown_path():
+    """Test shuffling with items that have no path information."""
+    shuffler = ShufflerOfTests(seed=SEED_42)
+
+    class Dummy:
+        def __init__(self, name):
+            self.name = name
+
+    items = [Dummy("a"), Dummy("b")]
+    items_copy1 = items.copy()
+    shuffler.shuffle_items_by_file_in_place(items_copy1)  # type: ignore
+    assert [item.name for item in items_copy1] == ["b", "a"]
+    items_copy2 = items.copy()
+    shuffler.shuffle_files_in_place(items_copy2)  # type: ignore
+    assert [item.name for item in items_copy2] == ["a", "b"]

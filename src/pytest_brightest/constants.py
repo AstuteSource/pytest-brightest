@@ -19,7 +19,6 @@ TESTS = "tests"
 # define pytest-specific constants
 FSPATH = "fspath"
 PATH = "path"
-NODEID = "nodeid"
 NODEID_SEPARATOR = "::"
 
 # define constants for test outcomes
@@ -38,6 +37,7 @@ REPORT_JSON = ".report.json"
 
 # define the empty string and starting constants
 EMPTY_STRING = ""
+INDENT = "  "
 NEWLINE = "\n"
 ZERO_COST = 0.0
 BRIGHTEST = "brightest"
@@ -47,8 +47,6 @@ FAILURE = "failure"
 FOCUS = "focus"
 DIRECTION = "direction"
 SEED = "seed"
-MODULE_COSTS = "module_costs"
-TEST_COSTS = "test_costs"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 PYTEST_BRIGHTEST_OUT = "pytest-brightest-output"
 PYTEST_BRIGHTEST_OUT_JSON = "pytest-brightest-output.json"
@@ -57,10 +55,25 @@ PYTEST_BRIGHTEST_OUT_JSON = "pytest-brightest-output.json"
 SHUFFLE = "shuffle"
 NAME = "name"
 COST = "cost"
+RATIO = "ratio"
+AVERAGE_COST = "average-cost"
+AVERAGE_FAILURE = "average-failure"
+AVERAGE_RATIO = "average-ratio"
+
+# define constants for tie-breaking
+TIE_BREAK_BY = "tie_break_by"
+INVERSE_COST = "inverse-cost"
+INVERSE_FAILURE = "inverse-failure"
+INVERSE_NAME = "inverse-name"
+INVERSE_RATIO = "inverse-ratio"
+INVERSE_AVERAGE_COST = "inverse-average-cost"
+INVERSE_AVERAGE_FAILURE = "inverse-average-failure"
+INVERSE_AVERAGE_RATIO = "inverse-average-ratio"
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
 TESTS_WITHIN_MODULE = "tests-within-module"
+TESTS_WITHIN_SUITE = "tests-within-suite"
 TESTS_ACROSS_MODULES = "tests-across-modules"
 
 # define constants for reordering direction
@@ -72,19 +85,29 @@ MODULE_ORDER = "module_order"
 TEST_ORDER = "test_order"
 MODULE_TESTS = "module_tests"
 MODULE_FAILURE_COUNTS = "module_failure_counts"
-PRIOR_MODULE_COSTS = "prior_module_costs"
-PRIOR_TEST_COSTS = "prior_test_costs"
-PRIOR_MODULE_FAILURE_COUNTS = "prior_module_failure_counts"
-PRIOR_MODULE_ORDER = "prior_module_order"
-PRIOR_TEST_ORDER = "prior_test_order"
-PRIOR_MODULE_TESTS = "prior_module_tests"
-CURRENT_MODULE_COSTS = "current_module_costs"
-CURRENT_TEST_COSTS = "current_test_costs"
-CURRENT_MODULE_FAILURE_COUNTS = "current_module_failure_counts"
-CURRENT_MODULE_ORDER = "current_module_order"
-CURRENT_TEST_ORDER = "current_test_order"
-CURRENT_MODULE_TESTS = "current_module_tests"
+MODULE_ORDER_CURRENT = "module_order_current"
 
 # diagnostic message prefixes
 FLASHLIGHT_PREFIX = ":flashlight: pytest-brightest:"
 HIGH_BRIGHTNESS_PREFIX = ":high_brightness: pytest-brightest:"
+
+# define constants for structured data logging
+RUNCOUNT = "runcount"
+DATA = "data"
+TESTCASES = "testcases"
+MAX_RUNS = 25
+
+# define constants for test cost and failure data
+TEST_CASE_COSTS = "test_case_costs"
+TEST_MODULE_COSTS = "test_module_costs"
+TEST_CASE_FAILURES = "test_case_failures"
+TEST_MODULE_FAILURES = "test_module_failures"
+TEST_CASE_RATIOS = "test_case_ratios"
+TEST_MODULE_RATIOS = "test_module_ratios"
+
+# define constants for ratio calculation
+MIN_COST_THRESHOLD = 0.00001
+
+# define constants for command-line arguments in JSON report
+REPEAT_COUNT = "repeat_count"
+REPEAT_FAILED_COUNT = "repeat_failed_count"

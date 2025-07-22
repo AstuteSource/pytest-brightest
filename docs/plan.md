@@ -169,7 +169,98 @@ contiguous region of the file.
     - The reason for asking the code to be generated in this fashion is that it ensures
     that the line numbers in the code blocks match the line numbers in the file.
 
-## Refactoring Instructions
+## Current Refactoring Instructions
+
+1) The `pytest-brightest` plugin does not yet have a good way to save data in
+the JSON report file. The data that it saves it not consistent and not suitable
+for checking to confirm whether or not it is working correctly.
+
+2) The refactored version of the plugin should save the following data in
+the `brightest` section of the JSON report files in a list of entries:
+    - `runcount`: The identifier for the run of the test suite.
+    - `timestamp`: The timestamp when the test suite was run.
+    - `technique`: The technique used for reordering the tests.
+    - `focus`: The focus of the reordering.
+    - `direction`: The direction of the reordering.
+    - `seed`: The seed for the random number generator used for shuffling.
+    - `data`: All calculated data about the test cases, test modules, etc.
+    - `testcases`: A list of test `nodeids` in the order that the plugin
+    executed them decided to run them according to the current configuration.
+
+3) If one of these attributes is not needed for a specific configuration of the
+plugin, it should still still be recorded, but with the value `null`.
+
+4) The purpose of the `runcount` parameter is to allow the plugin to save up to a
+maximum number of runs in the JSON report. For now, the tool can have a
+hard-coded constant of `25` for the maximum number of runs that it will store in
+the `brightest` section of the JSON report file. This means that the `runcount`
+will start at `1` and increment by `1` for each run of the test suite with the
+plugin being enabled. Then, all the data will be stored for that run and can be
+used in subsequent runs of the test suite when the plugin is enabled.
+
+5) The entire refactoring should not break the existing implementation. It
+should all of this logging code so that the plugin's behavior is easier to check
+and understand. If there are any inconsistencies in the description of the tool,
+then the agent implementing this refactoring should check in with the designer
+of the pytest-brightest plugin to clarify details.
+
+6) An example of the `brightest` section of the JSON file would be:
+
+```json
+"brightest": [
+    {
+        "runcount": 1,
+        "timestamp": "2025-07-15T22:03:39.926943",
+        "technique": "cost",
+        "focus": "modules-within-suite",
+        "direction": "ascending",
+        "seed": null,
+        "data": {
+            "test_case_costs": {
+                "tests/test_actions.py::test_get_github_actions_status_no_runs": 0.0005024719866923988,
+                "tests/test_actions.py::test_get_github_actions_status_success_with_runs": 0.0012274129840079695,
+                < ... more test case cost data ... >
+            }
+            "test_module_costs": {
+                "tests/test_models.py": 0.004262267902959138,
+                "tests/test_user.py": 0.005330827989382669,
+                "tests/test_actions.py": 0.0049656800692901015,
+                "tests/test_find.py": 0.007323569996515289,
+                "tests/test_constants.py": 0.007342756842263043,
+                "tests/test_pullrequest.py": 0.00743798105395399,
+                "tests/test_repository.py": 0.014911067992215976,
+                "tests/test_status.py": 0.1593270179873798,
+                "tests/test_main.py": 0.11824749677907676,
+                "tests/test_util.py": 0.22743810291285627,
+                "tests/test_discover.py": 0.2617855129938107
+                < ... more test module cost data ... >
+            }
+            "test_case_failures": {
+                "tests/test_actions.py::test_get_github_actions_status_no_runs": 0,
+                "tests/test_actions.py::test_get_github_actions_status_success_with_runs": 0,
+                < ... more test case failure data ... >
+            },
+            "test_module_failures": {
+                "tests/test_models.py": 0,
+                "tests/test_user.py": 0,
+                "tests/test_actions.py": 0,
+                "tests/test_find.py": 0,
+                "tests/test_constants.py": 0,
+                "tests/test_pullrequest.py": 0,
+                "tests/test_repository.py": 0,
+                "tests/test_status.py": 0,
+                "tests/test_main.py": 0,
+                "tests/test_util.py": 0,
+                "tests/test_discover.py": 0
+                < ... more test module failure data ... >
+            }
+        }
+    }
+    < more entries for follow-on runs of the test suite with pytest-brightest plugin ... >
+]
+```
+
+## Finished Refactoring Instructions
 
 1) Even though the command-line interface for the pytest-brightest plugin is
 acceptable and there is evidence that it works when installed through an
@@ -204,3 +295,296 @@ general-purpose and easier to use and understand. If there are any
 inconsistencies in the description of the tool, then the agent implementing this
 refactoring should check in with the designer of the pytest-brightest plugin to
 clarify details.
+
+## Additional Notes
+
+Note: This section is for any additional notes or context that might be
+useful for future software agents who work on this project.
+
+## Current Plans
+
+Note: A software agent can add details about their plan in this subsection.
+
+### DONE: Implement --repeat feature (2025-07-21)
+
+1. Add a new command-line argument `--repeat` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times each test should be repeated.
+2. In the `BrightestPlugin.configure` method, read the value of the `--repeat` argument and store it in a new instance variable, e.g., `self.repeat_count`.
+3. In `pytest_collection_modifyitems`, after the existing reordering and shuffling logic, check if `self.repeat_count` is greater than 1.
+4. If it is, create a new list of items. For each item in the (potentially reordered) `items` list, add it to the new list `self.repeat_count` times.
+5. Replace the original `items` list with this new list of repeated items.
+6. Add a new test case in `tests/test_plugin.py` to verify that the `--repeat` functionality works as expected. This test should check that the number of items is correctly multiplied.
+7. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
+
+### DONE: Implement --repeat-failed feature (2025-07-21)
+
+1. Add a new command-line argument `--repeat-failed` to `pytest_addoption` in `src/pytest_brightest/plugin.py`. This argument will accept an integer value specifying the number of times a failed test should be repeated.
+2. In the `BrightestPlugin.configure` method, read the value of the `--repeat-failed` argument and store it in a new instance variable, e.g., `self.repeat_failed_count`.
+3. Implement the `pytest_runtest_protocol` hook to create a custom test execution loop.
+4. Inside the `pytest_runtest_protocol` hook, use `_pytest.runner.runtestprotocol` to run the test and get the reports.
+5. If the test fails, loop and re-run it up to the specified number of times.
+6. Log the final reports.
+7. Add new test cases in `tests/test_plugin.py` to verify that the `--repeat-failed` functionality works as expected. This test should check that a failing test is re-run and that a passing test is not.
+8. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
+
+### DONE: Implement ratio-based reordering technique (2025-07-21)
+
+**Goal**: Implement a new "ratio" reordering technique that uses both cost and failure data by calculating the ratio between failure counts and test execution costs.
+
+**Problem to solve**: Current tool uses either cost OR failure data exclusively. The new technique will combine both by calculating failure-to-cost ratios for more informed test prioritization.
+
+**Detailed Plan**:
+
+1. **Add "ratio" constant and update command-line options**:
+   - Add `RATIO = "ratio"` constant to `src/pytest_brightest/constants.py`
+   - Update `--reorder-by-technique` choices in `src/pytest_brightest/plugin.py` to include "ratio"
+   - Update validation logic in `BrightestPlugin.configure()` to handle "ratio" technique
+
+2. **Implement ratio calculation logic in ReordererOfTests class**:
+   - Add method `get_test_failure_to_cost_ratio(item: Item) -> float` that:
+     - Gets failure count using existing `get_test_failure_count()`
+     - Gets cost using existing `get_test_total_duration()`
+     - Applies failure count adjustment: if failure_count == 0, set to 1; else use actual count + 1
+     - Returns ratio as `adjusted_failure_count / max(cost, 0.001)` (avoid division by zero)
+   - Add module-level ratio calculation methods for different focus areas
+   - Add ratio-based reordering methods for all three focus types:
+     - `reorder_modules_by_ratio()`: Calculate module ratios as sum of module test ratios
+     - `reorder_tests_across_modules()`: Sort all tests by individual ratios
+     - `reorder_tests_within_module()`: Sort tests within each module by ratios
+
+3. **Update existing reordering infrastructure**:
+   - Modify `reorder_tests_in_place()` to handle "ratio" technique
+   - Update `get_prior_data_for_reordering()` to collect ratio data for reporting
+   - Add ratio-specific helper methods following existing patterns
+
+4. **Comprehensive testing**:
+   - Create test fixtures with mock failure and cost data representing realistic scenarios
+   - Test ratio calculations with edge cases (zero failures, zero costs, missing data)
+   - Verify correct ordering for all three focus areas (modules-within-suite, tests-within-module, tests-within-suite)
+   - Test integration with existing shuffling and other reordering techniques
+   - Verify diagnostic output shows meaningful ratio information
+
+5. **Data structure updates**:
+   - Update `get_prior_data_for_reordering()` to include ratio calculations in saved data
+   - Ensure ratio data is properly included in brightest JSON report output
+   - Add appropriate constants for ratio-related data keys
+
+6. **Documentation and validation**:
+   - Run full test suite with `uv run task all` to ensure no regressions
+   - Verify ratio technique works with all existing command-line combinations
+   - Test with real test suites to validate meaningful reordering results
+
+**Key technical considerations**:
+- Failure count adjustment strategy: non-failed tests get count of 1, failed tests get actual_count + 1
+- Cost normalization: use minimum threshold (0.001) to prevent division by zero for very fast tests
+- Preserve existing behavior: all current reordering techniques must continue working unchanged
+- Diagnostic output: provide clear information about calculated ratios during reordering
+
+### DONE: Code Quality Improvements (2025-07-22)
+
+1. [X] **Remove Redundant Constant:** Delete the duplicate definition of `NODEID`
+   in `src/pytest_brightest/constants.py`.
+2. [X] **Correct Variable Usage:** In `src/pytest_brightest/plugin.py`, in the
+   `configure` method, change the diagnostic message to use `self.repeat_count`
+instead of `_plugin.repeat_count`.
+
+### Add Use of Historical Data (2025-07-22)
+
+- Right now the plugin can only look at data from the prior run of the tool when
+it reorders the test suite according to the command-line arguments.
+- Here is an example a command to use to explain what currently happens and what
+arguments and functions need to be added for this new feature: `uv run pytest
+--json-report --brightest --reorder-by-technique ratio --reorder-by-focus
+tests-within-module --reorder-in-direction descending --tie-break-by
+inverse-cost --max-test-runs 3 --verbose`.
+- Right now this command will only look at the prior run of the program when it
+reorders the tests within the module according to the ratio of failure count to
+the execution time of the tests within each module. It also uses the
+inverse-cost data, again from the prior run, to resolve any of the ties.
+- The tool needs a feature that can look at all prior runs of the tool
+as stored inside of the JSON file when it completes all of these steps:
+    - For any --reorder-by-technique that uses the prior run (e.g., cost,
+    failure, or ratio) there should be new options called "average-cost" and
+    "average-failure" and "average-ratio" that will be the average cost, number
+    of failures, or ratios across all of the runs stored in the JSON file.
+    - The description in the prior step should work correctly for:
+        - "modules-within-suite" focus
+        - "tests-within-module" focus
+        - "tests-within-suite" focus
+    - The "ascending" or "descending" direction should continue to work in
+    the same way, excepting the fact that it will be sorting the tests
+    according to the average cost, failure count, or ratio across all of the
+    runs stored in the JSON file.
+    - The tie-breaking should continue to work in the same way, excepting the
+    fact that it will be using the average cost, failure count, or ratio,
+    inverse cost, and inverse ratio, across all of the runs in the JSON
+    file. This means that there is the new for new values for the
+    --tie-break-by argument that can be used to specify the average cost,
+    average failure count, or average ratio or the inverses. So,
+    for instance, they would be overall called:
+        - `average-cost`
+        - `average-failure`
+        - `average-ratio`
+        - `inverse-average-cost`
+        - `inverse-average-failure`
+        - `inverse-average-ratio`
+    The --max-test-runs argument should continue to work in the same way,
+    as it controls how many prior runs are stored in the JSON file, giving
+    the person using the program the ability to override the default of
+    25, which is hard-coded into the tool.
+- In summary, this tool should examine and leverage as part of the computation
+_all available data_ in the JSON file, not just the prior run of the tool. So,
+as an example, if there are 10 test case costs for each test, then the tool
+should take the average of those test test case costs and use it to reorder
+the tests according to whatever else is specified in the command-line.
+- Ultimately, this feature needs to be added across all meaningful combination
+of command-lines arguments for the pytest-brightest plugin.
+
+### Code Quality Improvements to Consider for Later (2025-07-22)
+
+1. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
+   broad `except Exception` blocks in `load_test_data` and
+`setup_json_report_plugin` with more specific exceptions like
+`json.JSONDecodeError`, `KeyError`, and `OSError` to provide more precise error
+handling.
+2. **Optimize Tie-Breaking:** Refactor the module tie-breaking logic in
+   `src/pytest_brightest/reorder.py` to pre-calculate tie-breaking metrics for
+all modules at once, avoiding redundant calculations within the sorting
+function.
+3. **Eliminate Code Duplication:** Consolidate the logic for calculating module
+   failure counts and ratios. The primary calculation should reside in
+`ReordererOfTests`, and `BrightestPlugin` should call these methods to avoid
+duplication.
+4. **Reduce Code Complexity:** Break down long and complex functions like
+   `get_prior_data_for_reordering` and `pytest_sessionfinish` into smaller,
+more manageable helper functions.
+
+### Experimental Evaluation Plan to Consider for Later (2025-07-22)
+
+**Goal:** To empirically evaluate the effectiveness of the `pytest-brightest`
+plugin in improving the regression testing process.
+
+**Metrics:**
+
+* **Average Precision of Fault Detection (APFD):** This metric measures how
+quickly a reordered test suite can detect faults. A higher APFD value indicates
+a more effective test case prioritization technique. APFD is calculated as:
+`1 - (sum of ranks of first failing test for each fault) / (number of faults *
+number of tests) + 1 / (2 * number of tests)`
+
+**Project Selection:**
+
+1. **Identify Candidate Projects:** Search GitHub for open-source Python
+    projects that use `pytest` for testing.
+2. **Filter by Criteria:**
+    * The project must have a non-trivial test suite (e.g., > 50 tests).
+    * The project must have a history of failing builds on a CI service
+    (e.g., GitHub Actions), which indicates the presence of real-world faults.
+    * The project's test suite should be runnable with `pytest`.
+
+**Methodology:**
+
+1. **Select Faulty Commits:** For each selected project, identify commits where
+   the test suite failed. These commits represent the "faulty" versions of the
+code.
+2. **Establish a Baseline:** For each faulty commit, run the test suite without
+   any reordering to establish a baseline execution order and failure data.
+3. **Apply Reordering Techniques:** Run the test suite with `pytest-brightest`
+   enabled, using different reordering strategies:
+    * `--reorder-by-technique=cost --reorder-in-direction=descending`
+    * `--reorder-by-technique=failure --reorder-in-direction=descending`
+    * `--reorder-by-technique=ratio --reorder-in-direction=descending`
+    * `--reorder-by-technique=shuffle` (as a random control)
+4. **Collect Data:** For each run, record the following:
+    * The order in which the tests were executed.
+    * The outcome of each test (pass or fail).
+    * The execution time of each test.
+5. **Calculate APFD:** For each reordering technique and for the baseline,
+calculate the APFD score.
+
+**Data Analysis:**
+
+1. **Compare APFD Scores:** Compare the APFD scores of the different reordering
+   techniques against the baseline and against each other.
+2. **Statistical Analysis:** Use statistical tests (e.g., t-tests) to determine
+   if the differences in APFD scores are statistically significant.
+3. **Draw Conclusions:** Based on the analysis, draw conclusions about the
+   effectiveness of each reordering technique implemented in
+`pytest-brightest`.
+
+### Novel Experimental Evaluation Plan to Consider for Later (2025-07-22)
+
+**Goal:** To devise an easier yet equally convincing experimental plan for
+evaluating the `pytest-brightest` plugin.
+
+**Method:** This plan leverages **mutation testing** to synthetically and
+realistically introduce faults into a codebase. This creates a large, controlled
+set of faulty program versions (mutants) to test against, eliminating the need
+for manual mining of Git history.
+
+**Metrics:**
+
+* **Mutation Score:** The percentage of killed mutants (`killed / (total -
+  unviable)`). A higher score indicates a more effective test suite.
+* **Average Precision of Fault Detection (APFD):** As defined in the previous
+  plan, this measures how quickly a reordered test suite detects faults (i.e.,
+  kills mutants).
+
+**Tools:**
+
+* **mutmut:** A mutation testing tool for Python that is easy to set up and
+  use.
+
+**Project Selection:**
+
+1. **Identify Candidate Projects:** Search GitHub for open-source Python
+   projects that use `pytest` for testing.
+2. **Filter by Criteria:**
+   * The project must have a high-quality test suite (e.g., > 80% code
+     coverage). This ensures that most mutants will be killed by at least one
+     test.
+   * The project's test suite should be runnable with `pytest`.
+
+**Methodology:**
+
+1. **Setup:** For each selected project, install `mutmut` and configure it to
+   work with the project's source code and test suite.
+2. **Generate Mutants:** Run `mutmut` to generate a set of mutants. Each
+   mutant represents a single, small change to the source code.
+3. **Identify Killing Tests:** For each mutant, run `mutmut run` to identify
+   which tests kill it. This creates a mapping from each mutant to its killing
+   test(s).
+4. **Establish a Baseline:** For each mutant, run its killing test(s) along
+   with all other tests in the original, un-reordered test suite. Record the
+   execution order and the position of the first killing test.
+5. **Apply Reordering Techniques:** For each mutant, run the full test suite
+   with `pytest-brightest` enabled, using the following reordering strategies:
+   * `--reorder-by-technique=cost --reorder-in-direction=descending`
+   * `--reorder-by-technique=failure --reorder-in-direction=descending`
+   * `--reorder-by-technique=ratio --reorder-in-direction=descending`
+   * `--reorder-by-technique=shuffle` (as a random control)
+6. **Collect Data:** For each run, record the following:
+   * The order in which the tests were executed.
+   * The position of the first test that kills the mutant.
+7. **Calculate APFD:** For each reordering technique and for the baseline,
+   calculate the APFD score across all mutants.
+
+**Data Analysis:**
+
+1. **Compare APFD Scores:** Compare the APFD scores of the different
+   reordering techniques against the baseline and against each other.
+2. **Statistical Analysis:** Use statistical tests (e.g., t-tests) to
+   determine if the differences in APFD scores are statistically significant.
+3. **Draw Conclusions:** Based on the analysis, draw conclusions about the
+   effectiveness of each reordering technique in `pytest-brightest` at
+   accelerating the detection of synthetically generated faults.
+
+**Advantages of this Approach:**
+
+* **Automation:** The process of generating faults (mutants) is fully
+  automated.
+* **Control:** The experiment is highly controlled, as each mutant represents a
+  single, known fault.
+* **Scalability:** It is easy to generate a large number of mutants, providing
+  a statistically significant sample size.
+* **Realism:** Mutation testing is widely regarded as a realistic way to model
+  real-world programming errors.

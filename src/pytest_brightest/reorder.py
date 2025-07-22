@@ -1,6 +1,8 @@
 """Test reordering functionality based on previous test behavior."""
 
 import json
+import random
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -8,10 +10,14 @@ from rich.console import Console
 
 from .constants import (
     ASCENDING,
+    AVERAGE_COST,
+    AVERAGE_FAILURE,
+    AVERAGE_RATIO,
     BRIGHTEST,
     CALL,
     CALL_DURATION,
     COST,
+    DATA,
     DEFAULT_FILE_ENCODING,
     DEFAULT_PYTEST_JSON_REPORT_PATH,
     DURATION,
@@ -21,28 +27,43 @@ from .constants import (
     FAILURE,
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
+    INDENT,
+    INVERSE_AVERAGE_COST,
+    INVERSE_AVERAGE_FAILURE,
+    INVERSE_AVERAGE_RATIO,
+    INVERSE_COST,
+    INVERSE_FAILURE,
+    INVERSE_NAME,
     JSON_REPORT_FILE,
+    MIN_COST_THRESHOLD,
+    MODULE_FAILURE_COUNTS,
+    MODULE_ORDER,
+    MODULE_TESTS,
     MODULES_WITHIN_SUITE,
     NAME,
+    NEWLINE,
     NODEID,
     NODEID_SEPARATOR,
     OUTCOME,
-    PRIOR_MODULE_COSTS,
-    PRIOR_MODULE_FAILURE_COUNTS,
-    PRIOR_MODULE_ORDER,
-    PRIOR_MODULE_TESTS,
-    PRIOR_TEST_COSTS,
-    PRIOR_TEST_ORDER,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
+    RATIO,
     REPORT_JSON,
     SETUP,
     SETUP_DURATION,
+    SHUFFLE,
     TEARDOWN,
     TEARDOWN_DURATION,
+    TEST_CASE_COSTS,
+    TEST_CASE_FAILURES,
+    TEST_CASE_RATIOS,
+    TEST_MODULE_COSTS,
+    TEST_MODULE_FAILURES,
+    TEST_MODULE_RATIOS,
+    TEST_ORDER,
     TESTS,
-    TESTS_ACROSS_MODULES,
     TESTS_WITHIN_MODULE,
+    TESTS_WITHIN_SUITE,
     TOTAL_DURATION,
     UNKNOWN,
     ZERO_COST,
@@ -72,6 +93,7 @@ class ReordererOfTests:
         self.test_data: Dict[str, Dict[str, Any]] = {}
         self.last_module_failure_counts: Optional[Dict[str, int]] = None
         self.brightest_data: Optional[Dict[str, Any]] = None
+        self.historical_brightest_data: List[Dict[str, Any]] = []
         # extract the data from the pytest-json-report that was found
         # and store it in the dictionary called test_data
         self.load_test_data()
@@ -91,10 +113,24 @@ class ReordererOfTests:
         # attempt to read the JSON file and parse it to extract the data
         try:
             with report_path.open("r", encoding=DEFAULT_FILE_ENCODING) as file:
-                # load the JSON data from the file
+                # load the JSON data from the file; this JSON data will contain
+                # information written by pytest-json-report and, possibly,
+                # more data that was written by this plugin; all of the data
+                # in the report should be preserved when it is saved again
+                # unless the size of the report is too big across too many runs
                 data = json.load(file)
                 # store the brightest data if it exists for historical information
-                self.brightest_data = data.get(BRIGHTEST, {})
+                brightest_raw = data.get(BRIGHTEST, {})
+                if isinstance(brightest_raw, list):
+                    # new format: list of runs
+                    self.historical_brightest_data = brightest_raw
+                    self.brightest_data = (
+                        brightest_raw[-1] if brightest_raw else {}
+                    )
+                else:
+                    # legacy format: single object
+                    self.brightest_data = brightest_raw
+                    self.historical_brightest_data = [brightest_raw]
                 # there is data about test cases
                 # that were executed in the list of test information
                 if TESTS in data:
@@ -156,6 +192,41 @@ class ReordererOfTests:
         # return the outcome of the test, or unknown if it is not available
         return test_info.get(OUTCOME, UNKNOWN)
 
+    def get_test_failure_count(self, item: "Item") -> int:
+        """Get the failure count of a test item from previous run(s)."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        if self.brightest_data and "data" in self.brightest_data:
+            test_case_failures = self.brightest_data["data"].get(
+                "test_case_failures", {}
+            )
+            return test_case_failures.get(node_id, 0)
+        return 0
+
+    def get_test_failure_to_cost_ratio(self, item: "Item") -> float:
+        """Get the failure-to-cost ratio of a test item from previous run(s)."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        if self.brightest_data and "data" in self.brightest_data:
+            test_case_ratios = self.brightest_data["data"].get(
+                "test_case_ratios", {}
+            )
+            saved_ratio = test_case_ratios.get(node_id, 0.0)
+            if saved_ratio > 0.0:
+                return saved_ratio
+        # fallback to calculation if no saved ratio available
+        failure_count = self.get_test_failure_count(item)
+        cost = self.get_test_total_duration(item)
+        safe_cost = max(cost, MIN_COST_THRESHOLD)
+        return failure_count / safe_cost
+
+    def get_module_failure_to_cost_ratio(self, module_path: str) -> float:
+        """Get the failure-to-cost ratio of a module from previous run(s)."""
+        if self.brightest_data and "data" in self.brightest_data:
+            test_module_ratios = self.brightest_data["data"].get(
+                "test_module_ratios", {}
+            )
+            return test_module_ratios.get(module_path, 0.0)
+        return 0.0
+
     def classify_tests_by_outcome(
         self, items: List["Item"]
     ) -> Tuple[List["Item"], List["Item"]]:
@@ -181,7 +252,7 @@ class ReordererOfTests:
             items, key=self.get_test_total_duration, reverse=not ascending
         )
 
-    def get_prior_data_for_reordering(  # noqa: PLR0912
+    def get_prior_data_for_reordering(  # noqa: PLR0912, PLR0915
         self, items: List["Item"], technique: str, focus: str
     ) -> Dict[str, Any]:
         """Get the prior data that was used for reordering during this session."""
@@ -193,18 +264,18 @@ class ReordererOfTests:
                 nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     cost = self.get_test_total_duration(item)
-                    module_path = nodeid.split(NODEID)[0]
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     module_costs[module_path] = (
                         module_costs.get(module_path, 0.0) + cost
                     )
                     test_costs[nodeid] = cost
             if focus == MODULES_WITHIN_SUITE:
-                prior_data[PRIOR_MODULE_COSTS] = module_costs
+                prior_data[TEST_MODULE_COSTS] = module_costs
             elif focus == TESTS_WITHIN_MODULE:
-                prior_data[PRIOR_MODULE_COSTS] = module_costs
-                prior_data[PRIOR_TEST_COSTS] = test_costs
-            elif focus == TESTS_ACROSS_MODULES:
-                prior_data[PRIOR_TEST_COSTS] = test_costs
+                prior_data[TEST_MODULE_COSTS] = module_costs
+                prior_data[TEST_CASE_COSTS] = test_costs
+            elif focus == TESTS_WITHIN_SUITE:
+                prior_data[TEST_CASE_COSTS] = test_costs
         elif technique == NAME:
             if focus == MODULES_WITHIN_SUITE:
                 module_order = []
@@ -214,9 +285,9 @@ class ReordererOfTests:
                         module_path = nodeid.split("::")[0]
                         if module_path not in module_order:
                             module_order.append(module_path)
-                prior_data[PRIOR_MODULE_ORDER] = module_order
-            elif focus == TESTS_ACROSS_MODULES:
-                prior_data[PRIOR_TEST_ORDER] = [
+                prior_data[MODULE_ORDER] = module_order
+            elif focus == TESTS_WITHIN_SUITE:
+                prior_data[TEST_ORDER] = [
                     getattr(item, NODEID, "") for item in items
                 ]
             elif focus == TESTS_WITHIN_MODULE:
@@ -228,23 +299,81 @@ class ReordererOfTests:
                         if module_path not in module_tests:
                             module_tests[module_path] = []
                         module_tests[module_path].append(nodeid)
-                prior_data[PRIOR_MODULE_TESTS] = module_tests
+                prior_data[MODULE_TESTS] = module_tests
         elif technique == FAILURE:
             module_failure_counts: Dict[str, int] = {}
+            test_case_failures: Dict[str, int] = {}
             for item in items:
                 nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     module_path = nodeid.split(NODEID_SEPARATOR)[0]
                     if module_path not in module_failure_counts:
                         module_failure_counts[module_path] = 0
-                    if self.get_test_outcome(item) in [FAILED, ERROR]:
+                    failure_count = self.get_test_failure_count(item)
+                    if failure_count > 0:
                         module_failure_counts[module_path] += 1
+                    test_case_failures[nodeid] = failure_count
             if focus == MODULES_WITHIN_SUITE:
-                prior_data[PRIOR_MODULE_FAILURE_COUNTS] = module_failure_counts
+                prior_data[MODULE_FAILURE_COUNTS] = module_failure_counts
+            elif focus == TESTS_WITHIN_MODULE:
+                prior_data[MODULE_FAILURE_COUNTS] = module_failure_counts
+                prior_data["test_case_failures"] = test_case_failures
+            elif focus == TESTS_WITHIN_SUITE:
+                prior_data["test_case_failures"] = test_case_failures
+        elif technique == RATIO:
+            # read saved ratios from previous run instead of calculating them
+            if self.brightest_data and "data" in self.brightest_data:
+                saved_test_case_ratios = self.brightest_data["data"].get(
+                    "test_case_ratios", {}
+                )
+                saved_test_module_ratios = self.brightest_data["data"].get(
+                    "test_module_ratios", {}
+                )
+                # use saved ratios if available
+                if saved_test_case_ratios or saved_test_module_ratios:
+                    prior_data[TEST_CASE_RATIOS] = saved_test_case_ratios
+                    prior_data[TEST_MODULE_RATIOS] = saved_test_module_ratios
+                    return prior_data
+            # fallback: calculate ratios if no saved data available
+            ratio_module_failures: Dict[str, int] = {}
+            ratio_module_costs: Dict[str, float] = {}
+            test_case_ratios: Dict[str, float] = {}
+            # calculate ALL ratio data regardless of focus for comprehensive storage
+            for item in items:
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
+                if nodeid:
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                    # calculate individual test ratio
+                    ratio = self.get_test_failure_to_cost_ratio(item)
+                    test_case_ratios[nodeid] = ratio
+                    # aggregate data for module-level calculation
+                    failure_count = self.get_test_failure_count(item)
+                    cost = self.get_test_total_duration(item)
+                    ratio_module_failures[module_path] = (
+                        ratio_module_failures.get(module_path, 0)
+                        + failure_count
+                    )
+                    ratio_module_costs[module_path] = (
+                        ratio_module_costs.get(module_path, 0.0) + cost
+                    )
+            # calculate module ratios using aggregation method
+            # module_ratio = total_failures_in_module / total_cost_of_module
+            module_ratios: Dict[str, float] = {}
+            for module_path, total_failures in ratio_module_failures.items():
+                total_cost = max(
+                    ratio_module_costs[module_path], MIN_COST_THRESHOLD
+                )
+                module_ratios[module_path] = total_failures / total_cost
+            # store ALL ratio data regardless of focus
+            prior_data[TEST_MODULE_RATIOS] = module_ratios
+            prior_data[TEST_CASE_RATIOS] = test_case_ratios
         return prior_data
 
     def reorder_modules_by_cost(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their cumulative cost."""
         module_costs: Dict[str, float] = {}
@@ -262,30 +391,34 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
-        # sort the modules by their cumulative cost
-        sorted_modules = sorted(
-            module_costs.keys(),
-            key=lambda m: module_costs[m],
-            reverse=not ascending,
+        # sort the modules by their cumulative cost with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_costs.keys()),
+            lambda m: module_costs[m],
+            tie_breaker,
+            ascending,
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             # print out the cost of the module using no more than 5 fixed
             # decimal places for the execution time of the test case
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} has cost {module_costs[module]:.5f}"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with overall cost {module_costs[module]:.5f}"
             )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
         items[:] = reordered_items
 
     def reorder_modules_by_name(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their name."""
         module_items: Dict[str, List["Item"]] = {}
@@ -297,13 +430,18 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
-        # sort the modules by their name
-        sorted_modules = sorted(module_items.keys(), reverse=not ascending)
+        # sort the modules by their name with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_items.keys()),
+            lambda m: m,  # sort by module name itself
+            tie_breaker,
+            ascending,
+        )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
         # to separate the diagnostic output from what appeared before
-        if sorted_modules:
-            console.print()
+        # if sorted_modules:
+        # console.print()
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
@@ -314,7 +452,10 @@ class ReordererOfTests:
         items[:] = reordered_items
 
     def reorder_modules_by_failure(
-        self, items: List["Item"], ascending: bool = True
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder test modules by their number of failing tests from previous runs."""
         module_failure_counts: Dict[str, int] = {}
@@ -333,11 +474,12 @@ class ReordererOfTests:
                 module_items[module_path].append(item)
         # store the failure counts for potential use in reporting
         self.last_module_failure_counts = module_failure_counts
-        # sort the modules by their failure count
-        sorted_modules = sorted(
-            module_failure_counts.keys(),
-            key=lambda m: module_failure_counts[m],
-            reverse=not ascending,
+        # sort the modules by their failure count with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_failure_counts.keys()),
+            lambda m: module_failure_counts[m],
+            tie_breaker,
+            ascending,
         )
         reordered_items = []
         # if there are sorted modules, then add an extra newline
@@ -347,19 +489,171 @@ class ReordererOfTests:
         # iterate over the sorted modules and add their items to the reordered list
         for module in sorted_modules:
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} has {module_failure_counts[module]} failing tests from previous run"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains {module_failure_counts[module]} failing tests from previous run"
             )
             reordered_items.extend(module_items[module])
         # replace the original list of items with the reordered list
         items[:] = reordered_items
 
+    def reorder_modules_by_ratio(
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder test modules by their failure-to-cost ratio using saved data."""
+        module_items: Dict[str, List["Item"]] = {}
+        module_ratios: Dict[str, float] = {}
+        # group items by module and get saved ratios
+        for item in items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                    # get saved module ratio or fallback to 0.0
+                    module_ratios[module_path] = (
+                        self.get_module_failure_to_cost_ratio(module_path)
+                    )
+                module_items[module_path].append(item)
+        # sort the modules by their saved ratios with tie-breaking
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_ratios.keys()),
+            lambda m: module_ratios[m],
+            tie_breaker,
+            ascending,
+        )
+        reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared before
+        # if sorted_modules:
+        # console.print()
+        # iterate over the sorted modules and add their items to the reordered list
+        for module in sorted_modules:
+            # print out the ratio of the module using no more than 5 fixed
+            # decimal places for the failure-to-cost ratio of the test case
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with overall ratio {module_ratios[module]:.5f}"
+            )
+            reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
+        items[:] = reordered_items
+
+    def reorder_modules_by_average_cost(
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder test modules by their average cost."""
+        module_items: Dict[str, List["Item"]] = {}
+        for item in items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        console.print(
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average costs across {len(self.historical_brightest_data)} historical runs"
+        )
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_items.keys()),
+            self.get_average_module_cost,
+            tie_breaker,
+            ascending,
+        )
+        reordered_items = []
+        # if sorted_modules:
+        # console.print()
+        for module in sorted_modules:
+            avg_cost = self.get_average_module_cost(module)
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average cost {avg_cost:.5f}"
+            )
+            reordered_items.extend(module_items[module])
+        items[:] = reordered_items
+
+    def reorder_modules_by_average_failure(
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder test modules by their average failure count."""
+        module_items: Dict[str, List["Item"]] = {}
+        for item in items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        console.print(
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average failures across {len(self.historical_brightest_data)} historical runs"
+        )
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_items.keys()),
+            self.get_average_module_failure,
+            tie_breaker,
+            ascending,
+        )
+        reordered_items = []
+        # if sorted_modules:
+        # console.print()
+        for module in sorted_modules:
+            avg_failure = self.get_average_module_failure(module)
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average failure count {avg_failure:.5f}"
+            )
+            reordered_items.extend(module_items[module])
+        items[:] = reordered_items
+
+    def reorder_modules_by_average_ratio(
+        self,
+        items: List["Item"],
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder test modules by their average failure-to-cost ratio."""
+        module_items: Dict[str, List["Item"]] = {}
+        for item in items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        console.print(
+            f"{NEWLINE}{FLASHLIGHT_PREFIX} Computing average ratios across {len(self.historical_brightest_data)} historical runs"
+        )
+        sorted_modules = self._sort_modules_with_tie_breaking(
+            list(module_items.keys()),
+            self.get_average_module_ratio,
+            tie_breaker,
+            ascending,
+        )
+        reordered_items = []
+        # if sorted_modules:
+        # console.print()
+        for module in sorted_modules:
+            avg_ratio = self.get_average_module_ratio(module)
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average ratio {avg_ratio:.5f}"
+            )
+            reordered_items.extend(module_items[module])
+        items[:] = reordered_items
+
     def reorder_tests_within_module(
-        self, items: List["Item"], reorder_by: str, ascending: bool = True
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
         """Reorder tests within each module by the specified technique."""
         module_items: Dict[str, List["Item"]] = {}
         module_order: List[str] = []
-        # iterate over each item and group them by module
         for item in items:
             nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
@@ -369,40 +663,561 @@ class ReordererOfTests:
                     module_order.append(module_path)
                 module_items[module_path].append(item)
         reordered_items = []
-        # if there are sorted modules, then add an extra newline
-        # to separate the diagnostic output from what appeared before
         if module_order:
             console.print()
-        # iterate over the modules and reorder the tests within each module
         for module in module_order:
             console.print(
-                f":flashlight: pytest-brightest: Reordering tests in module {module}"
+                f"{FLASHLIGHT_PREFIX} Reordering tests in module {module}"
             )
             if reorder_by == COST:
-                module_items[module].sort(
-                    key=self.get_test_total_duration, reverse=not ascending
+                self._reorder_module_by_cost(
+                    module_items[module], ascending, tie_breaker
                 )
             elif reorder_by == NAME:
-                # when sorting by name, the direction can be ascending or descending
-                # and the key for sorting is the nodeid of the test item
-                if ascending:
-                    module_items[module].sort(
-                        key=lambda item: getattr(item, NODEID, EMPTY_STRING),
-                        reverse=False,
-                    )
-                else:
-                    module_items[module].sort(
-                        key=lambda item: getattr(item, NODEID, EMPTY_STRING),
-                        reverse=True,
-                    )
+                self._reorder_module_by_name(
+                    module_items[module], ascending, tie_breaker
+                )
+            elif reorder_by == FAILURE:
+                self._reorder_module_by_failure(
+                    module_items[module], ascending, tie_breaker
+                )
+            elif reorder_by == RATIO:
+                self._reorder_module_by_ratio(
+                    module_items[module], ascending, tie_breaker
+                )
+            elif reorder_by == AVERAGE_COST:
+                self._reorder_module_by_average_cost(
+                    module_items[module], ascending, tie_breaker
+                )
+            elif reorder_by == AVERAGE_FAILURE:
+                self._reorder_module_by_average_failure(
+                    module_items[module], ascending, tie_breaker
+                )
+            elif reorder_by == AVERAGE_RATIO:
+                self._reorder_module_by_average_ratio(
+                    module_items[module], ascending, tie_breaker
+                )
             reordered_items.extend(module_items[module])
-        # replace the original list of items with the reordered list
         items[:] = reordered_items
 
-    def reorder_tests_in_place(
-        self, items: List["Item"], reorder_by: str, reorder: str, focus: str
+    def _reorder_module_by_cost(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
     ) -> None:
-        """Reorder tests in place based on the specified criteria."""
+        """Reorder a module's tests by cost."""
+        self._sort_with_tie_breaking(
+            module_items, self.get_test_total_duration, tie_breaker, ascending
+        )
+        if module_items:
+            cheapest_test = module_items[0]
+            console.print(
+                f"{INDENT} First test is {getattr(cheapest_test, NODEID, EMPTY_STRING)}"
+            )
+            most_expensive_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last test is {getattr(most_expensive_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_name(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by name."""
+        self._sort_with_tie_breaking(
+            module_items,
+            lambda item: getattr(item, NODEID, EMPTY_STRING),
+            tie_breaker,
+            ascending,
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-name test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-name test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_failure(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by failure."""
+        self._sort_with_tie_breaking(
+            module_items, self.get_test_failure_count, tie_breaker, ascending
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-failure test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-failure test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_ratio(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by failure-to-cost ratio."""
+        self._sort_with_tie_breaking(
+            module_items,
+            self.get_test_failure_to_cost_ratio,
+            tie_breaker,
+            ascending,
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-ratio test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-ratio test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_average_cost(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by average cost."""
+        self._sort_with_tie_breaking(
+            module_items, self.get_average_test_cost, tie_breaker, ascending
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-average-cost test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-average-cost test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_average_failure(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by average failure count."""
+        self._sort_with_tie_breaking(
+            module_items, self.get_average_test_failure, tie_breaker, ascending
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-average-failure test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-average-failure test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _reorder_module_by_average_ratio(
+        self,
+        module_items: List["Item"],
+        ascending: bool,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder a module's tests by average failure-to-cost ratio."""
+        self._sort_with_tie_breaking(
+            module_items, self.get_average_test_ratio, tie_breaker, ascending
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-average-ratio test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-average-ratio test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
+    def _sort_modules_with_tie_breaking(
+        self,
+        modules: List[str],
+        primary_key_func,
+        tie_breaker: Optional[str],
+        ascending: bool = True,
+    ) -> List[str]:
+        """Sort modules using primary key with tie-breaking for modules with equal values."""
+        if not tie_breaker:
+            # no tie-breaking, use simple sort
+            return sorted(modules, key=primary_key_func, reverse=not ascending)
+        # group modules by primary key value to detect ties
+        groups: defaultdict[Any, list] = defaultdict(list)
+        for module in modules:
+            primary_value = primary_key_func(module)
+            groups[primary_value].append(module)
+        # sort each group using tie-breaker
+        result = []
+        for primary_value in sorted(groups.keys(), reverse=not ascending):
+            group = groups[primary_value]
+            if len(group) == 1:
+                # no tie, add single module
+                result.extend(group)
+            else:
+                # handle ties using tie-breaker
+                self._resolve_module_ties(group, tie_breaker, ascending)
+                result.extend(group)
+        return result
+
+    def _resolve_module_ties(
+        self,
+        tied_modules: List[str],
+        tie_breaker: Optional[str],
+        ascending: bool,
+    ) -> None:
+        """Resolve ties between modules using the specified tie-breaking technique."""
+        if not tie_breaker or len(tied_modules) <= 1:
+            return
+        # apply the single tie-breaker
+        if tie_breaker == COST:
+            self._resolve_module_ties_by_cost(tied_modules, ascending)
+        elif tie_breaker == FAILURE:
+            self._resolve_module_ties_by_failure(tied_modules, ascending)
+        elif tie_breaker == RATIO:
+            tied_modules.sort(
+                key=self.get_module_failure_to_cost_ratio,
+                reverse=not ascending,
+            )
+        elif tie_breaker == NAME:
+            tied_modules.sort(reverse=not ascending)
+        elif tie_breaker == INVERSE_COST:
+            self._resolve_module_ties_by_inverse_cost(tied_modules, ascending)
+        elif tie_breaker == INVERSE_FAILURE:
+            self._resolve_module_ties_by_inverse_failure(
+                tied_modules, ascending
+            )
+        elif tie_breaker == INVERSE_NAME:
+            tied_modules.sort(reverse=ascending)
+        elif tie_breaker == SHUFFLE:
+            random.shuffle(tied_modules)
+        else:
+            random.shuffle(tied_modules)
+
+    def _resolve_module_ties_by_cost(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by cost."""
+        module_costs = {}
+        for module_path in tied_modules:
+            total_cost = 0.0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    total_cost += self.test_data[node_id].get(
+                        TOTAL_DURATION, 0.0
+                    )
+            module_costs[module_path] = total_cost
+        tied_modules.sort(key=lambda m: module_costs[m], reverse=not ascending)
+
+    def _resolve_module_ties_by_failure(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by failure count."""
+        module_failures = {}
+        for module_path in tied_modules:
+            failure_count = 0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    outcome = self.test_data[node_id].get(OUTCOME, UNKNOWN)
+                    if outcome in [FAILED, ERROR]:
+                        failure_count += 1
+            module_failures[module_path] = failure_count
+        tied_modules.sort(
+            key=lambda m: module_failures[m], reverse=not ascending
+        )
+
+    def _resolve_module_ties_by_inverse_cost(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by inverse cost."""
+        module_costs = {}
+        for module_path in tied_modules:
+            total_cost = 0.0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    total_cost += self.test_data[node_id].get(
+                        TOTAL_DURATION, 0.0
+                    )
+            module_costs[module_path] = total_cost
+        tied_modules.sort(
+            key=lambda m: (
+                1.0 / module_costs[m] if module_costs[m] > 0 else float("inf")
+            ),
+            reverse=not ascending,
+        )
+
+    def _resolve_module_ties_by_inverse_failure(
+        self, tied_modules: List[str], ascending: bool
+    ) -> None:
+        """Resolve module ties by inverse failure count."""
+        module_failures = {}
+        for module_path in tied_modules:
+            failure_count = 0
+            for node_id in self.test_data:
+                if node_id.startswith(module_path + NODEID_SEPARATOR):
+                    outcome = self.test_data[node_id].get(OUTCOME, UNKNOWN)
+                    if outcome in [FAILED, ERROR]:
+                        failure_count += 1
+            module_failures[module_path] = failure_count
+        tied_modules.sort(
+            key=lambda m: (
+                1.0 / module_failures[m]
+                if module_failures[m] > 0
+                else float("inf")
+            ),
+            reverse=not ascending,
+        )
+
+    def _sort_with_tie_breaking(
+        self,
+        items: List["Item"],
+        primary_key_func,
+        tie_breaker: Optional[str],
+        ascending: bool = True,
+    ) -> None:
+        """Sort items using primary key with tie-breaking for items with equal values."""
+        if not tie_breaker:
+            # no tie-breaking, use simple sort
+            items.sort(key=primary_key_func, reverse=not ascending)
+            return
+        # group items by primary key value to detect ties
+        groups: defaultdict[Any, list] = defaultdict(list)
+        for item in items:
+            primary_value = primary_key_func(item)
+            groups[primary_value].append(item)
+        # sort each group using tie-breaker
+        result = []
+        for primary_value in sorted(groups.keys(), reverse=not ascending):
+            group = groups[primary_value]
+            if len(group) == 1:
+                # no tie, add single item
+                result.extend(group)
+            else:
+                # handle ties using tie-breaker
+                self._resolve_ties(group, tie_breaker, ascending)
+                result.extend(group)
+        # replace original list contents
+        items[:] = result
+
+    def _resolve_ties_by_average(
+        self,
+        tied_items: List["Item"],
+        tie_breaker: Optional[str],
+        ascending: bool,
+    ) -> None:
+        """Resolve ties using the specified average-based tie-breaking technique."""
+        if tie_breaker == AVERAGE_COST:
+            tied_items.sort(
+                key=self.get_average_test_cost, reverse=not ascending
+            )
+        elif tie_breaker == AVERAGE_FAILURE:
+            tied_items.sort(
+                key=self.get_average_test_failure, reverse=not ascending
+            )
+        elif tie_breaker == AVERAGE_RATIO:
+            tied_items.sort(
+                key=self.get_average_test_ratio, reverse=not ascending
+            )
+        elif tie_breaker == INVERSE_AVERAGE_COST:
+            tied_items.sort(
+                key=lambda item: (
+                    1.0 / self.get_average_test_cost(item)
+                    if self.get_average_test_cost(item) > 0
+                    else float("inf")
+                ),
+                reverse=not ascending,
+            )
+        elif tie_breaker == INVERSE_AVERAGE_FAILURE:
+            tied_items.sort(
+                key=lambda item: (
+                    1.0 / self.get_average_test_failure(item)
+                    if self.get_average_test_failure(item) > 0
+                    else float("inf")
+                ),
+                reverse=not ascending,
+            )
+        elif tie_breaker == INVERSE_AVERAGE_RATIO:
+            tied_items.sort(
+                key=lambda item: (
+                    1.0 / self.get_average_test_ratio(item)
+                    if self.get_average_test_ratio(item) > 0
+                    else float("inf")
+                ),
+                reverse=not ascending,
+            )
+
+    def _resolve_ties(
+        self,
+        tied_items: List["Item"],
+        tie_breaker: Optional[str],
+        ascending: bool,
+    ) -> None:
+        """Resolve ties using the specified tie-breaking technique."""
+        if not tie_breaker or len(tied_items) <= 1:
+            return
+        # apply the single tie-breaker
+        # --> resolve ties with the cost
+        if tie_breaker == COST:
+            tied_items.sort(
+                key=self.get_test_total_duration, reverse=not ascending
+            )
+        # --> resolve ties with the failure count
+        elif tie_breaker == FAILURE:
+            tied_items.sort(
+                key=self.get_test_failure_count, reverse=not ascending
+            )
+        # --> resolve ties with the failure-to-cost ratio
+        elif tie_breaker == RATIO:
+            tied_items.sort(
+                key=self.get_test_failure_to_cost_ratio,
+                reverse=not ascending,
+            )
+        # --> resolve ties by name, which involves
+        # sorting according to the nodeid attribute
+        # in lexicographical order
+        elif tie_breaker == NAME:
+            tied_items.sort(
+                key=lambda item: getattr(item, NODEID, EMPTY_STRING),
+                reverse=not ascending,
+            )
+        # --> resolve ties by inverse cost (i.e., use 1 / cost
+        # while ensuring that the cost is not zero)
+        elif tie_breaker == INVERSE_COST:
+            tied_items.sort(
+                key=lambda item: (
+                    1.0 / self.get_test_total_duration(item)
+                    if self.get_test_total_duration(item) > 0
+                    else float("inf")
+                ),
+                reverse=not ascending,
+            )
+        # --> resolve ties by inverse failure count (i.e., use 1 / failure
+        # count while ensuring that the failure count is not zero)
+        elif tie_breaker == INVERSE_FAILURE:
+            tied_items.sort(
+                key=lambda item: (
+                    1.0 / self.get_test_failure_count(item)
+                    if self.get_test_failure_count(item) > 0
+                    else float("inf")
+                ),
+                reverse=not ascending,
+            )
+        # --> resolve ties by inverse name, which sorts by nodeid in reverse order
+        elif tie_breaker == INVERSE_NAME:
+            tied_items.sort(
+                key=lambda item: getattr(item, NODEID, EMPTY_STRING),
+                reverse=ascending,
+            )
+        # --> resolve ties with the average-based techniques
+        elif tie_breaker in [
+            AVERAGE_COST,
+            AVERAGE_FAILURE,
+            AVERAGE_RATIO,
+            INVERSE_AVERAGE_COST,
+            INVERSE_AVERAGE_FAILURE,
+            INVERSE_AVERAGE_RATIO,
+        ]:
+            self._resolve_ties_by_average(tied_items, tie_breaker, ascending)
+        # --> resolve ties randomly by shuffling
+        # the portions of the test suite
+        elif tie_breaker == SHUFFLE:
+            random.shuffle(tied_items)
+        # --> if there is, somehow, an unspecified option
+        # for tie-breaking then just shuffle the tied items
+        else:
+            random.shuffle(tied_items)
+
+    def get_average_test_cost(self, item: "Item") -> float:
+        """Get the average cost of a test item across all historical runs."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        costs = []
+        for run in self.historical_brightest_data:
+            cost = run.get(DATA, {}).get(TEST_CASE_COSTS, {}).get(node_id)
+            if cost is not None:
+                costs.append(cost)
+        return sum(costs) / len(costs) if costs else 0.0
+
+    def get_average_test_failure(self, item: "Item") -> float:
+        """Get the average failure count of a test item across all historical runs."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        failures = []
+        for run in self.historical_brightest_data:
+            failure = (
+                run.get(DATA, {}).get(TEST_CASE_FAILURES, {}).get(node_id)
+            )
+            if failure is not None:
+                failures.append(failure)
+        return sum(failures) / len(failures) if failures else 0.0
+
+    def get_average_test_ratio(self, item: "Item") -> float:
+        """Get the average failure-to-cost ratio of a test item across all historical runs."""
+        node_id = getattr(item, NODEID, EMPTY_STRING)
+        ratios = []
+        for run in self.historical_brightest_data:
+            ratio = run.get(DATA, {}).get(TEST_CASE_RATIOS, {}).get(node_id)
+            if ratio is not None:
+                ratios.append(ratio)
+        return sum(ratios) / len(ratios) if ratios else 0.0
+
+    def get_average_module_cost(self, module_path: str) -> float:
+        """Get the average cost of a module across all historical runs."""
+        costs = []
+        for run in self.historical_brightest_data:
+            cost = (
+                run.get(DATA, {}).get(TEST_MODULE_COSTS, {}).get(module_path)
+            )
+            if cost is not None:
+                costs.append(cost)
+        return sum(costs) / len(costs) if costs else 0.0
+
+    def get_average_module_failure(self, module_path: str) -> float:
+        """Get the average failure count of a module across all historical runs."""
+        failures = []
+        for run in self.historical_brightest_data:
+            failure = (
+                run.get(DATA, {})
+                .get(TEST_MODULE_FAILURES, {})
+                .get(module_path)
+            )
+            if failure is not None:
+                failures.append(failure)
+        return sum(failures) / len(failures) if failures else 0.0
+
+    def get_average_module_ratio(self, module_path: str) -> float:
+        """Get the average failure-to-cost ratio of a module across all historical runs."""
+        ratios = []
+        for run in self.historical_brightest_data:
+            ratio = (
+                run.get(DATA, {}).get(TEST_MODULE_RATIOS, {}).get(module_path)
+            )
+            if ratio is not None:
+                ratios.append(ratio)
+        return sum(ratios) / len(ratios) if ratios else 0.0
+
+    def reorder_tests_in_place(
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        reorder: str,
+        focus: str,
+        tie_breaker: Optional[str] = None,
+    ) -> None:
+        """Reorder tests in place based on the specified criteria with optional tie-breaking."""
         # it is not possible to reorder an empty list of items
         if not items:
             return
@@ -411,37 +1226,83 @@ class ReordererOfTests:
         # reorder the modules within the suite by their cumulative cost
         if focus == MODULES_WITHIN_SUITE:
             if reorder_by == COST:
-                self.reorder_modules_by_cost(items, ascending)
+                self.reorder_modules_by_cost(items, ascending, tie_breaker)
             elif reorder_by == NAME:
-                self.reorder_modules_by_name(items, ascending)
+                self.reorder_modules_by_name(items, ascending, tie_breaker)
             elif reorder_by == FAILURE:
-                self.reorder_modules_by_failure(items, ascending)
+                self.reorder_modules_by_failure(items, ascending, tie_breaker)
+            elif reorder_by == RATIO:
+                self.reorder_modules_by_ratio(items, ascending, tie_breaker)
+            elif reorder_by == AVERAGE_COST:
+                self.reorder_modules_by_average_cost(
+                    items, ascending, tie_breaker
+                )
+            elif reorder_by == AVERAGE_FAILURE:
+                self.reorder_modules_by_average_failure(
+                    items, ascending, tie_breaker
+                )
+            elif reorder_by == AVERAGE_RATIO:
+                self.reorder_modules_by_average_ratio(
+                    items, ascending, tie_breaker
+                )
         # reordering tests within a module
         elif focus == TESTS_WITHIN_MODULE:
-            self.reorder_tests_within_module(items, reorder_by, ascending)
+            self.reorder_tests_within_module(
+                items, reorder_by, ascending, tie_breaker
+            )
         # reorder the tests across all modules in the suite
-        elif focus == TESTS_ACROSS_MODULES:
-            self.reorder_tests_across_modules(items, reorder_by, ascending)
+        # elif focus == TESTS_ACROSS_MODULES:
+        elif focus == TESTS_WITHIN_SUITE:
+            self.reorder_tests_across_modules(
+                items, reorder_by, ascending, tie_breaker
+            )
 
     def reorder_tests_across_modules(
-        self, items: List["Item"], reorder_by: str, ascending: bool = True
+        self,
+        items: List["Item"],
+        reorder_by: str,
+        ascending: bool = True,
+        tie_breaker: Optional[str] = None,
     ) -> None:
-        """Reorder tests across all modules by the specified technique."""
+        """Reorder tests across all modules by the specified technique with tie-breaking."""
+        # note that reordering all of the test cases across the modules
+        # is like treating all of the test cases as being inside of one
+        # big test suite, regardless of how they are grouped inside of
+        # the modules (i.e., the individual files in the test suite)
         if reorder_by == COST:
-            items.sort(key=self.get_test_total_duration, reverse=not ascending)
+            self._sort_with_tie_breaking(
+                items, self.get_test_total_duration, tie_breaker, ascending
+            )
         elif reorder_by == NAME:
-            items.sort(
-                key=lambda item: getattr(item, NAME, EMPTY_STRING),
-                reverse=not ascending,
+            self._sort_with_tie_breaking(
+                items,
+                lambda item: getattr(item, NODEID, EMPTY_STRING),
+                tie_breaker,
+                ascending,
             )
         elif reorder_by == FAILURE:
-            passing_tests, failing_tests = self.classify_tests_by_outcome(
-                items
+            self._sort_with_tie_breaking(
+                items, self.get_test_failure_count, tie_breaker, ascending
             )
-            if ascending:
-                items[:] = passing_tests + failing_tests
-            else:
-                items[:] = failing_tests + passing_tests
+        elif reorder_by == RATIO:
+            self._sort_with_tie_breaking(
+                items,
+                self.get_test_failure_to_cost_ratio,
+                tie_breaker,
+                ascending,
+            )
+        elif reorder_by == AVERAGE_COST:
+            self._sort_with_tie_breaking(
+                items, self.get_average_test_cost, tie_breaker, ascending
+            )
+        elif reorder_by == AVERAGE_FAILURE:
+            self._sort_with_tie_breaking(
+                items, self.get_average_test_failure, tie_breaker, ascending
+            )
+        elif reorder_by == AVERAGE_RATIO:
+            self._sort_with_tie_breaking(
+                items, self.get_average_test_ratio, tie_breaker, ascending
+            )
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""
@@ -502,13 +1363,13 @@ def setup_json_report_plugin(config) -> bool:
     # be extract to support certain types of prioritization enabled by pytest-brightest
     except ImportError as e:
         console.print(
-            f"{HIGH_BRIGHTNESS_PREFIX} pytest-brightest: pytest-json-report not available: {e}"
+            f"{HIGH_BRIGHTNESS_PREFIX} pytest-json-report not available: {e}"
         )
         return False
     # some other problem occurred and the pytest-brightest plugin cannot use
     # the pytest-json-report plugin
     except Exception as e:
         console.print(
-            f"{HIGH_BRIGHTNESS_PREFIX} pytest-brightest: pytest-json report not setup: {e}"
+            f"{HIGH_BRIGHTNESS_PREFIX} pytest-json report not setup: {e}"
         )
         return False

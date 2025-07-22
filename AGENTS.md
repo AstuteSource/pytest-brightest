@@ -79,6 +79,26 @@ imports into the middle of a file or even at the start of a function or class.
 - Support Python 3.11, 3.12, and 3.13 on MacOS, Linux, and Windows.
 - Use Pydantic models for data validation and JSON serialization.
 
+## Project Behavior Requirements
+
+- The `pytest-brightest` plugin works in the follow general way when it
+  comes to revising the execution of a Pytest test suite:
+  - Step 1: If the plugin is enabled, but there is no data,
+    then run the test suite as normal.
+  - Step 2: If the plugin is enabled and there is data, then run the
+    test suite based on the data from the prior run of the plugin.
+  - Step 3: Use the data collected by pytest-json-report to compute
+    the values for the cost and failure data for each test case and
+    for the test modules.
+  - Step 4: While keeping all prior data that was recorded by the tool,
+    the plugin will then update the data with the new cost and failure
+    data for each test case and for the test modules.
+  - Step 5: The plugin will then write the updated data to the
+    `pytest-brightest.json` file in the configured directory.
+- Critically, the `pytest-brightest` plugin should not, for instance,
+  delete data from a prior run unless the tool is beyond the maximum
+  amount of test runs that it is configured to persist.
+
 ## Test Requirements
 
 All test cases should follow these standards:
@@ -94,6 +114,7 @@ All test cases should follow these standards:
 - Test cases should aim to achieve full function, statement, and branch
   coverage.
 - Property-based tests must be marked with `@pytest.mark.property`.
+- Test cases should not produce any console output.
 
 ## Making Changes
 
@@ -110,3 +131,11 @@ All test cases should follow these standards:
 7. **Completion**: When you are finished with tasks, please summarize what tasks
    you completed, how you completed them, the challenges you faced, how you
    overcame them, and the rules that you followed during completion of the tasks.
+
+## Additional Notes for the Coding Agent
+
+Note: This file is specifically for coding agents and this section can be used
+by the coding agent to add additional details about this project that would
+be helpful for the agent to know when it is run again. Every time a coding
+agent finishes a task, it should add notes here as it deems appropriate.
+The coding agent should write the notes as a Markdown list.

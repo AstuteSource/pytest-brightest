@@ -46,6 +46,17 @@ class MockConfig:
 
     def getoption(self, name, default=None):
         """Get an option from the mock config."""
+        # provide default values for repeat options if not specified
+        defaults = {
+            "--repeat": 1,
+            "--repeat-failed": 0,
+            "--reorder-by-technique": None,
+            "--reorder-by-focus": None,
+            "--reorder-in-direction": None,
+            "--max-test-runs": None,
+        }
+        if name in defaults and name not in self.options:
+            return defaults[name]
         return self.options.get(name, default)
 
 
