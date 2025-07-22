@@ -56,6 +56,7 @@ PYTEST_BRIGHTEST_OUT_JSON = "pytest-brightest-output.json"
 SHUFFLE = "shuffle"
 NAME = "name"
 COST = "cost"
+RATIO = "ratio"
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
@@ -89,6 +90,13 @@ TEST_CASE_COSTS = "test_case_costs"
 TEST_MODULE_COSTS = "test_module_costs"
 TEST_CASE_FAILURES = "test_case_failures"
 TEST_MODULE_FAILURES = "test_module_failures"
+TEST_CASE_RATIOS = "test_case_ratios"
+TEST_MODULE_RATIOS = "test_module_ratios"
+
+# define constants for ratio calculation
+FAILURE_BASE_WEIGHT = 10
+FAILURE_MULTIPLIER = 10
+MIN_COST_THRESHOLD = 0.00001
 
 # define constants for command-line arguments in JSON report
 REPEAT_COUNT = "repeat_count"

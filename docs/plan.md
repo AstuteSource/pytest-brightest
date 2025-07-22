@@ -325,3 +325,56 @@ Note: A software agent can add details about their plan in this subsection.
 6. Log the final reports.
 7. Add new test cases in `tests/test_plugin.py` to verify that the `--repeat-failed` functionality works as expected. This test should check that a failing test is re-run and that a passing test is not.
 8. Run all linters and tests using `uv run task all` to ensure the changes are correct and follow project standards.
+
+### Implement ratio-based reordering technique (2025-07-21)
+
+**Goal**: Implement a new "ratio" reordering technique that uses both cost and failure data by calculating the ratio between failure counts and test execution costs.
+
+**Problem to solve**: Current tool uses either cost OR failure data exclusively. The new technique will combine both by calculating failure-to-cost ratios for more informed test prioritization.
+
+**Detailed Plan**:
+
+1. **Add "ratio" constant and update command-line options**:
+   - Add `RATIO = "ratio"` constant to `src/pytest_brightest/constants.py`
+   - Update `--reorder-by-technique` choices in `src/pytest_brightest/plugin.py` to include "ratio"
+   - Update validation logic in `BrightestPlugin.configure()` to handle "ratio" technique
+
+2. **Implement ratio calculation logic in ReordererOfTests class**:
+   - Add method `get_test_failure_to_cost_ratio(item: Item) -> float` that:
+     - Gets failure count using existing `get_test_failure_count()`
+     - Gets cost using existing `get_test_total_duration()`
+     - Applies failure count adjustment: if failure_count == 0, set to 1; else use actual count + 1
+     - Returns ratio as `adjusted_failure_count / max(cost, 0.001)` (avoid division by zero)
+   - Add module-level ratio calculation methods for different focus areas
+   - Add ratio-based reordering methods for all three focus types:
+     - `reorder_modules_by_ratio()`: Calculate module ratios as sum of module test ratios
+     - `reorder_tests_across_modules()`: Sort all tests by individual ratios
+     - `reorder_tests_within_module()`: Sort tests within each module by ratios
+
+3. **Update existing reordering infrastructure**:
+   - Modify `reorder_tests_in_place()` to handle "ratio" technique
+   - Update `get_prior_data_for_reordering()` to collect ratio data for reporting
+   - Add ratio-specific helper methods following existing patterns
+
+4. **Comprehensive testing**:
+   - Create test fixtures with mock failure and cost data representing realistic scenarios
+   - Test ratio calculations with edge cases (zero failures, zero costs, missing data)
+   - Verify correct ordering for all three focus areas (modules-within-suite, tests-within-module, tests-within-suite)
+   - Test integration with existing shuffling and other reordering techniques
+   - Verify diagnostic output shows meaningful ratio information
+
+5. **Data structure updates**:
+   - Update `get_prior_data_for_reordering()` to include ratio calculations in saved data
+   - Ensure ratio data is properly included in brightest JSON report output
+   - Add appropriate constants for ratio-related data keys
+
+6. **Documentation and validation**:
+   - Run full test suite with `uv run task all` to ensure no regressions
+   - Verify ratio technique works with all existing command-line combinations
+   - Test with real test suites to validate meaningful reordering results
+
+**Key technical considerations**:
+- Failure count adjustment strategy: non-failed tests get count of 1, failed tests get actual_count + 1
+- Cost normalization: use minimum threshold (0.001) to prevent division by zero for very fast tests
+- Preserve existing behavior: all current reordering techniques must continue working unchanged
+- Diagnostic output: provide clear information about calculated ratios during reordering

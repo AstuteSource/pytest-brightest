@@ -85,6 +85,28 @@ class TestBrightestPlugin:
         assert plugin.reorder_by == "cost"
         assert plugin.reorder == "ascending"
 
+    def test_configure_reorder_ratio(self, mock_config, mocker):
+        """Test that the plugin can be configured to reorder by ratio."""
+        mocker.patch("pytest_brightest.plugin.console.print")
+        mocker.patch(
+            "pytest_brightest.plugin.setup_json_report_plugin",
+            return_value=True,
+        )
+        plugin = BrightestPlugin()
+        config = mock_config(
+            {
+                "--brightest": True,
+                "--reorder-by-technique": "ratio",
+                "--reorder-in-direction": "descending",
+                "--reorder-by-focus": "tests-within-suite",
+            }
+        )
+        plugin.configure(config)
+        assert plugin.reorder_enabled
+        assert plugin.reorder_by == "ratio"
+        assert plugin.reorder == "descending"
+        assert plugin.focus == "tests-within-suite"
+
     def test_shuffle_tests(self, mock_config, mock_test_item, mocker):
         """Test that the plugin can shuffle tests."""
         mocker.patch("pytest_brightest.plugin.console.print")

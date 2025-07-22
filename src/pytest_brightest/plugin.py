@@ -35,6 +35,7 @@ from .constants import (
     NEWLINE,
     NODEID,
     NODEID_SEPARATOR,
+    RATIO,
     REPEAT_COUNT,
     REPEAT_FAILED_COUNT,
     RUNCOUNT,
@@ -149,7 +150,7 @@ class BrightestPlugin:
                     f"{HIGH_BRIGHTNESS_PREFIX} Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
                 )
         # if the reordering technique is chosen, then configure the reorderer
-        elif self.technique in [NAME, COST, FAILURE]:
+        elif self.technique in [NAME, COST, FAILURE, RATIO]:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
@@ -259,9 +260,9 @@ def pytest_addoption(parser: Parser) -> None:
     )
     group.addoption(
         "--reorder-by-technique",
-        choices=[SHUFFLE, NAME, COST, FAILURE],
+        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO],
         default=None,
-        help="Reorder tests by shuffling, name, cost, or failure",
+        help="Reorder tests by shuffling, name, cost, failure, or ratio",
     )
     group.addoption(
         "--reorder-by-focus",

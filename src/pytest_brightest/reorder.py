@@ -19,10 +19,13 @@ from .constants import (
     ERROR,
     FAILED,
     FAILURE,
+    FAILURE_BASE_WEIGHT,
+    FAILURE_MULTIPLIER,
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
     INDENT,
     JSON_REPORT_FILE,
+    MIN_COST_THRESHOLD,
     MODULE_FAILURE_COUNTS,
     MODULE_ORDER,
     MODULE_TESTS,
@@ -33,13 +36,16 @@ from .constants import (
     OUTCOME,
     PYTEST_CACHE_DIR,
     PYTEST_JSON_REPORT_PLUGIN_NAME,
+    RATIO,
     REPORT_JSON,
     SETUP,
     SETUP_DURATION,
     TEARDOWN,
     TEARDOWN_DURATION,
     TEST_CASE_COSTS,
+    TEST_CASE_RATIOS,
     TEST_MODULE_COSTS,
+    TEST_MODULE_RATIOS,
     TEST_ORDER,
     TESTS,
     TESTS_WITHIN_MODULE,
@@ -175,6 +181,19 @@ class ReordererOfTests:
             return test_case_failures.get(node_id, 0)
         return 0
 
+    def get_test_failure_to_cost_ratio(self, item: "Item") -> float:
+        """Get the failure-to-cost ratio of a test item from previous run(s)."""
+        failure_count = self.get_test_failure_count(item)
+        cost = self.get_test_total_duration(item)
+        # apply improved failure weighting: base weight + (failures * multiplier)
+        # this ensures failures have significant impact over cost considerations
+        adjusted_failure_count = FAILURE_BASE_WEIGHT + (
+            failure_count * FAILURE_MULTIPLIER
+        )
+        # avoid division by zero by using minimum threshold for cost
+        safe_cost = max(cost, MIN_COST_THRESHOLD)
+        return adjusted_failure_count / safe_cost
+
     def classify_tests_by_outcome(
         self, items: List["Item"]
     ) -> Tuple[List["Item"], List["Item"]]:
@@ -268,6 +287,24 @@ class ReordererOfTests:
                 prior_data["test_case_failures"] = test_case_failures
             elif focus == TESTS_WITHIN_SUITE:
                 prior_data["test_case_failures"] = test_case_failures
+        elif technique == RATIO:
+            module_ratios: Dict[str, float] = {}
+            test_case_ratios: Dict[str, float] = {}
+            # calculate ALL ratio data regardless of focus for comprehensive storage
+            for item in items:
+                nodeid = getattr(item, NODEID, EMPTY_STRING)
+                if nodeid:
+                    module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                    ratio = self.get_test_failure_to_cost_ratio(item)
+                    # always calculate module ratios (cumulative)
+                    if module_path not in module_ratios:
+                        module_ratios[module_path] = 0.0
+                    module_ratios[module_path] += ratio
+                    # always calculate individual test ratios
+                    test_case_ratios[nodeid] = ratio
+            # store ALL ratio data regardless of focus
+            prior_data[TEST_MODULE_RATIOS] = module_ratios
+            prior_data[TEST_CASE_RATIOS] = test_case_ratios
         return prior_data
 
     def reorder_modules_by_cost(
@@ -380,6 +417,47 @@ class ReordererOfTests:
         # replace the original list of items with the reordered list
         items[:] = reordered_items
 
+    def reorder_modules_by_ratio(
+        self, items: List["Item"], ascending: bool = True
+    ) -> None:
+        """Reorder test modules by their failure-to-cost ratio."""
+        module_ratios: Dict[str, float] = {}
+        module_items: Dict[str, List["Item"]] = {}
+        # iterate over each item and calculate the cumulative ratio of each module
+        for item in items:
+            nodeid = getattr(item, NODEID, EMPTY_STRING)
+            if nodeid:
+                # the module path is the part of the nodeid before the "::"
+                module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                ratio = self.get_test_failure_to_cost_ratio(item)
+                module_ratios[module_path] = (
+                    module_ratios.get(module_path, 0.0) + ratio
+                )
+                if module_path not in module_items:
+                    module_items[module_path] = []
+                module_items[module_path].append(item)
+        # sort the modules by their cumulative ratio
+        sorted_modules = sorted(
+            module_ratios.keys(),
+            key=lambda m: module_ratios[m],
+            reverse=not ascending,
+        )
+        reordered_items = []
+        # if there are sorted modules, then add an extra newline
+        # to separate the diagnostic output from what appeared before
+        if sorted_modules:
+            console.print()
+        # iterate over the sorted modules and add their items to the reordered list
+        for module in sorted_modules:
+            # print out the ratio of the module using no more than 5 fixed
+            # decimal places for the failure-to-cost ratio of the test case
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with overall ratio {module_ratios[module]:.5f}"
+            )
+            reordered_items.extend(module_items[module])
+        # replace the original list of items with the reordered list
+        items[:] = reordered_items
+
     def reorder_tests_within_module(
         self, items: List["Item"], reorder_by: str, ascending: bool = True
     ) -> None:
@@ -409,6 +487,8 @@ class ReordererOfTests:
                 self._reorder_module_by_failure(
                     module_items[module], ascending
                 )
+            elif reorder_by == RATIO:
+                self._reorder_module_by_ratio(module_items[module], ascending)
             reordered_items.extend(module_items[module])
         items[:] = reordered_items
 
@@ -464,6 +544,23 @@ class ReordererOfTests:
                 f"{INDENT} Last by-failure test is {getattr(last_test, NODEID, EMPTY_STRING)}"
             )
 
+    def _reorder_module_by_ratio(
+        self, module_items: List["Item"], ascending: bool
+    ) -> None:
+        """Reorder a module's tests by failure-to-cost ratio."""
+        module_items.sort(
+            key=self.get_test_failure_to_cost_ratio, reverse=not ascending
+        )
+        if module_items:
+            first_test = module_items[0]
+            console.print(
+                f"{INDENT} First by-ratio test is {getattr(first_test, NODEID, EMPTY_STRING)}"
+            )
+            last_test = module_items[-1]
+            console.print(
+                f"{INDENT} Last by-ratio test is {getattr(last_test, NODEID, EMPTY_STRING)}"
+            )
+
     def reorder_tests_in_place(
         self, items: List["Item"], reorder_by: str, reorder: str, focus: str
     ) -> None:
@@ -481,6 +578,8 @@ class ReordererOfTests:
                 self.reorder_modules_by_name(items, ascending)
             elif reorder_by == FAILURE:
                 self.reorder_modules_by_failure(items, ascending)
+            elif reorder_by == RATIO:
+                self.reorder_modules_by_ratio(items, ascending)
         # reordering tests within a module
         elif focus == TESTS_WITHIN_MODULE:
             self.reorder_tests_within_module(items, reorder_by, ascending)
@@ -506,6 +605,10 @@ class ReordererOfTests:
             )
         elif reorder_by == FAILURE:
             items.sort(key=self.get_test_failure_count, reverse=not ascending)
+        elif reorder_by == RATIO:
+            items.sort(
+                key=self.get_test_failure_to_cost_ratio, reverse=not ascending
+            )
 
     def has_test_data(self) -> bool:
         """Check if test performance data is available."""
