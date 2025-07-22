@@ -301,7 +301,7 @@ clarify details.
 Note: This section is for any additional notes or context that might be
 useful for future software agents who work on this project.
 
-## Current Plan
+## Current Plans
 
 Note: A software agent can add details about their plan in this subsection.
 
