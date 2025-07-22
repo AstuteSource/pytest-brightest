@@ -87,6 +87,26 @@ messages.
 - Support Python 3.11, 3.12, and 3.13 on MacOS, Linux, and Windows.
 - Use Pydantic models for data validation and JSON serialization.
 
+## Project Behavior Requirements
+
+- The `pytest-brightest` plugin works in the follow general way when it
+  comes to revising the execution of a Pytest test suite:
+  - Step 1: If the plugin is enabled, but there is no data,
+    then run the test suite as normal.
+  - Step 2: If the plugin is enabled and there is data, then run the
+    test suite based on the data from the prior run of the plugin.
+  - Step 3: Use the data collected by pytest-json-report to compute
+    the values for the cost and failure data for each test case and
+    for the test modules.
+  - Step 4: While keeping all prior data that was recorded by the tool,
+    the plugin will then update the data with the new cost and failure
+    data for each test case and for the test modules.
+  - Step 5: The plugin will then write the updated data to the
+    `pytest-brightest.json` file in the configured directory.
+- Critically, the `pytest-brightest` plugin should not, for instance,
+  delete data from a prior run unless the tool is beyond the maximum
+  amount of test runs that it is configured to persist.
+
 ## Test Requirements
 
 All test cases should follow these standards:
