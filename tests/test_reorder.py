@@ -615,6 +615,220 @@ class TestReordererOfTests:
             "mod1::test_fast",
         ]
 
+    def test_modules_within_suite_tie_breaking_with_shuffle(
+        self, mock_test_item, mocker
+    ):
+        """Test modules-within-suite focus with shuffle tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test1": {"total_duration": 0.0, "outcome": "passed"},
+            "mod2::test2": {"total_duration": 0.0, "outcome": "passed"},
+            "mod3::test3": {"total_duration": 0.0, "outcome": "passed"},
+        }
+
+        items = [
+            mock_test_item("mod1::test1"),
+            mock_test_item("mod2::test2"),
+            mock_test_item("mod3::test3"),
+        ]
+
+        # Test with cost technique - all modules have 0.0 cost, should use shuffle tie-breaker
+        original_order = [item.name for item in items]
+        reorderer.reorder_tests_in_place(
+            items, "cost", "descending", "modules-within-suite", "shuffle"
+        )
+
+        # The order might be different due to shuffling, but all items should still be present
+        final_order = [item.name for item in items]
+        assert len(final_order) == len(original_order)
+        assert set(final_order) == set(original_order)
+
+    def test_modules_within_suite_tie_breaking_with_name(
+        self, mock_test_item, mocker
+    ):
+        """Test modules-within-suite focus with name tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod_c::test1": {"total_duration": 0.0, "outcome": "passed"},
+            "mod_a::test2": {"total_duration": 0.0, "outcome": "passed"},
+            "mod_b::test3": {"total_duration": 0.0, "outcome": "passed"},
+        }
+
+        items = [
+            mock_test_item("mod_c::test1"),
+            mock_test_item("mod_a::test2"),
+            mock_test_item("mod_b::test3"),
+        ]
+
+        # Test with ratio technique - all modules have 0.0 ratio, should use name tie-breaker (ascending)
+        reorderer.reorder_tests_in_place(
+            items, "ratio", "descending", "modules-within-suite", "name"
+        )
+
+        # Should be ordered by module name: mod_c, mod_b, mod_a (descending)
+        # Since main sort is descending, tie-breaker also follows descending
+        assert [item.name for item in items] == [
+            "mod_c::test1",
+            "mod_b::test3",
+            "mod_a::test2",
+        ]
+
+    def test_modules_within_suite_tie_breaking_with_cost(
+        self, mock_test_item, mocker
+    ):
+        """Test modules-within-suite focus with cost tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test1": {"total_duration": 2.0, "outcome": "passed"},
+            "mod1::test2": {"total_duration": 1.0, "outcome": "passed"},
+            "mod2::test3": {"total_duration": 1.5, "outcome": "passed"},
+            "mod2::test4": {"total_duration": 1.5, "outcome": "passed"},
+            "mod3::test5": {"total_duration": 0.5, "outcome": "passed"},
+            "mod3::test6": {"total_duration": 2.5, "outcome": "passed"},
+        }
+
+        # Module costs: mod1=3.0, mod2=3.0 (tie), mod3=3.0 (tie)
+        items = [
+            mock_test_item("mod1::test1"),
+            mock_test_item("mod1::test2"),
+            mock_test_item("mod2::test3"),
+            mock_test_item("mod2::test4"),
+            mock_test_item("mod3::test5"),
+            mock_test_item("mod3::test6"),
+        ]
+
+        # Test with failure technique - all modules have same failure count (0)
+        # Should use cost tie-breaker
+        reorderer.reorder_tests_in_place(
+            items, "failure", "descending", "modules-within-suite", "cost"
+        )
+
+        # All modules have 0 failures, so tie-breaker by cost should be used
+        # Since descending, higher cost modules should come first
+        actual_modules = []
+        for item in items:
+            module = item.name.split("::")[0]
+            if module not in actual_modules:
+                actual_modules.append(module)
+
+        # Since all modules have same cost (3.0), the order may vary
+        # but all modules should be present
+        expected_module_count = 3
+        assert len(actual_modules) == expected_module_count
+        assert set(actual_modules) == {"mod1", "mod2", "mod3"}
+
+    def test_tests_within_module_tie_breaking_with_shuffle(
+        self, mock_test_item, mocker
+    ):
+        """Test tests-within-module focus with shuffle tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test1": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test2": {
+                "total_duration": 1.0,
+                "outcome": "passed",
+            },  # Same cost
+            "mod1::test3": {
+                "total_duration": 1.0,
+                "outcome": "passed",
+            },  # Same cost
+        }
+
+        items = [
+            mock_test_item("mod1::test1"),
+            mock_test_item("mod1::test2"),
+            mock_test_item("mod1::test3"),
+        ]
+
+        # Test with cost technique - all tests have same cost, should use shuffle tie-breaker
+        original_order = [item.name for item in items]
+        reorderer.reorder_tests_in_place(
+            items, "cost", "ascending", "tests-within-module", "shuffle"
+        )
+
+        # Order might be different due to shuffling, but all items should be present
+        final_order = [item.name for item in items]
+        assert len(final_order) == len(original_order)
+        assert set(final_order) == set(original_order)
+
+    def test_tests_within_module_tie_breaking_with_name(
+        self, mock_test_item, mocker
+    ):
+        """Test tests-within-module focus with name tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test_c": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test_a": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test_b": {"total_duration": 1.0, "outcome": "passed"},
+        }
+
+        items = [
+            mock_test_item("mod1::test_c"),
+            mock_test_item("mod1::test_a"),
+            mock_test_item("mod1::test_b"),
+        ]
+
+        # Test with ratio technique - all tests have same ratio (0), should use name tie-breaker
+        reorderer.reorder_tests_in_place(
+            items, "ratio", "ascending", "tests-within-module", "name"
+        )
+
+        # Should be ordered by test name: test_a, test_b, test_c
+        assert [item.name for item in items] == [
+            "mod1::test_a",
+            "mod1::test_b",
+            "mod1::test_c",
+        ]
+
+    def test_tests_within_module_tie_breaking_with_failure(
+        self, mock_test_item, mocker
+    ):
+        """Test tests-within-module focus with failure tie-breaker."""
+        mocker.patch("pytest_brightest.reorder.console.print")
+        reorderer = ReordererOfTests()
+        reorderer.test_data = {
+            "mod1::test1": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test2": {"total_duration": 1.0, "outcome": "passed"},
+            "mod1::test3": {
+                "total_duration": 1.0,
+                "outcome": "failed",
+            },  # Different failure
+        }
+        reorderer.brightest_data = {
+            "data": {
+                "test_case_failures": {
+                    "mod1::test1": 0,
+                    "mod1::test2": 0,  # Same failure count as test1
+                    "mod1::test3": 1,  # Different failure count
+                }
+            }
+        }
+
+        items = [
+            mock_test_item("mod1::test1"),
+            mock_test_item("mod1::test2"),
+            mock_test_item("mod1::test3"),
+        ]
+
+        # Test with cost technique - test1 and test2 have same cost, should use failure tie-breaker
+        reorderer.reorder_tests_in_place(
+            items, "cost", "descending", "tests-within-module", "failure"
+        )
+
+        # All have same cost, so tie-breaker by failure (descending) should put test3 first
+        # then test1 and test2 (both have 0 failures, order may vary)
+        final_order = [item.name for item in items]
+        assert (
+            final_order[0] == "mod1::test3"
+        )  # Highest failure count should be first
+        assert "mod1::test1" in final_order
+        assert "mod1::test2" in final_order
+
     def test_get_test_failure_to_cost_ratio(self, mock_test_item):
         """Test getting the failure to cost ratio of a test."""
         reorderer = ReordererOfTests()
