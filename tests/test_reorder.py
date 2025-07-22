@@ -375,8 +375,8 @@ class TestReordererOfTests:
         }
         item = mock_test_item("test_one")
         ratio = reorderer.get_test_failure_to_cost_ratio(item)
-        # base_weight=10 + (0 failures * 10) = 10, divided by 2.0 = 5.0
-        assert ratio == pytest.approx(10.0 / 2.0)
+        # simple ratio: 0 failures / 2.0 cost = 0.0
+        assert ratio == pytest.approx(0.0)
 
     def test_get_test_failure_to_cost_ratio_with_failures(
         self, mock_test_item
@@ -389,8 +389,8 @@ class TestReordererOfTests:
         }
         item = mock_test_item("test_one")
         ratio = reorderer.get_test_failure_to_cost_ratio(item)
-        # base_weight=10 + (3 failures * 10) = 40, divided by 1.0 = 40.0
-        assert ratio == pytest.approx((10 + 3 * 10) / 1.0)
+        # simple ratio: 3 failures / 1.0 cost = 3.0
+        assert ratio == pytest.approx(3.0)
 
     def test_get_test_failure_to_cost_ratio_zero_cost(self, mock_test_item):
         """Test failure-to-cost ratio calculation for tests with zero cost."""
@@ -401,16 +401,16 @@ class TestReordererOfTests:
         }
         item = mock_test_item("test_one")
         ratio = reorderer.get_test_failure_to_cost_ratio(item)
-        # base_weight=10 + (2 failures * 10) = 30, divided by 0.001 (min threshold)
-        assert ratio == pytest.approx((10 + 2 * 10) / 0.001)
+        # simple ratio: 2 failures / 0.00001 (min threshold) = 200000.0
+        assert ratio == pytest.approx(2 / 0.00001)
 
     def test_get_test_failure_to_cost_ratio_no_data(self, mock_test_item):
         """Test failure-to-cost ratio calculation for tests with no data."""
         reorderer = ReordererOfTests()
         item = mock_test_item("test_one")
         ratio = reorderer.get_test_failure_to_cost_ratio(item)
-        # base_weight=10 + (0 failures * 10) = 10, divided by 0.001 (min threshold)
-        assert ratio == pytest.approx(10.0 / 0.001)
+        # simple ratio: 0 failures / 0.00001 (min threshold) = 0.0
+        assert ratio == pytest.approx(0.0)
 
     def test_reorder_modules_by_ratio(self, mock_test_item, mocker):
         """Test reordering modules by failure-to-cost ratio."""

@@ -19,8 +19,6 @@ from .constants import (
     ERROR,
     FAILED,
     FAILURE,
-    FAILURE_BASE_WEIGHT,
-    FAILURE_MULTIPLIER,
     FLASHLIGHT_PREFIX,
     HIGH_BRIGHTNESS_PREFIX,
     INDENT,
@@ -185,14 +183,11 @@ class ReordererOfTests:
         """Get the failure-to-cost ratio of a test item from previous run(s)."""
         failure_count = self.get_test_failure_count(item)
         cost = self.get_test_total_duration(item)
-        # apply improved failure weighting: base weight + (failures * multiplier)
-        # this ensures failures have significant impact over cost considerations
-        adjusted_failure_count = FAILURE_BASE_WEIGHT + (
-            failure_count * FAILURE_MULTIPLIER
-        )
-        # avoid division by zero by using minimum threshold for cost
+        # simple ratio: failures per unit time - pure "bang for buck"
+        # this gives 0 for non-failing tests (correct behavior!)
+        # and prioritizes tests with high failure rates per unit execution time
         safe_cost = max(cost, MIN_COST_THRESHOLD)
-        return adjusted_failure_count / safe_cost
+        return failure_count / safe_cost
 
     def classify_tests_by_outcome(
         self, items: List["Item"]
@@ -288,20 +283,32 @@ class ReordererOfTests:
             elif focus == TESTS_WITHIN_SUITE:
                 prior_data["test_case_failures"] = test_case_failures
         elif technique == RATIO:
-            module_ratios: Dict[str, float] = {}
+            module_failures: Dict[str, int] = {}
+            module_costs: Dict[str, float] = {}
             test_case_ratios: Dict[str, float] = {}
             # calculate ALL ratio data regardless of focus for comprehensive storage
             for item in items:
                 nodeid = getattr(item, NODEID, EMPTY_STRING)
                 if nodeid:
                     module_path = nodeid.split(NODEID_SEPARATOR)[0]
+                    # calculate individual test ratio
                     ratio = self.get_test_failure_to_cost_ratio(item)
-                    # always calculate module ratios (cumulative)
-                    if module_path not in module_ratios:
-                        module_ratios[module_path] = 0.0
-                    module_ratios[module_path] += ratio
-                    # always calculate individual test ratios
                     test_case_ratios[nodeid] = ratio
+                    # aggregate data for module-level calculation
+                    failure_count = self.get_test_failure_count(item)
+                    cost = self.get_test_total_duration(item)
+                    module_failures[module_path] = (
+                        module_failures.get(module_path, 0) + failure_count
+                    )
+                    module_costs[module_path] = (
+                        module_costs.get(module_path, 0.0) + cost
+                    )
+            # calculate module ratios using aggregation method
+            # module_ratio = total_failures_in_module / total_cost_of_module
+            module_ratios: Dict[str, float] = {}
+            for module_path, total_failures in module_failures.items():
+                total_cost = max(module_costs[module_path], MIN_COST_THRESHOLD)
+                module_ratios[module_path] = total_failures / total_cost
             # store ALL ratio data regardless of focus
             prior_data[TEST_MODULE_RATIOS] = module_ratios
             prior_data[TEST_CASE_RATIOS] = test_case_ratios
@@ -420,23 +427,34 @@ class ReordererOfTests:
     def reorder_modules_by_ratio(
         self, items: List["Item"], ascending: bool = True
     ) -> None:
-        """Reorder test modules by their failure-to-cost ratio."""
-        module_ratios: Dict[str, float] = {}
+        """Reorder test modules by their failure-to-cost ratio using aggregation method."""
+        module_failures: Dict[str, int] = {}
+        module_costs: Dict[str, float] = {}
         module_items: Dict[str, List["Item"]] = {}
-        # iterate over each item and calculate the cumulative ratio of each module
+        # calculate aggregate failure and cost data for each module
         for item in items:
             nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
                 # the module path is the part of the nodeid before the "::"
                 module_path = nodeid.split(NODEID_SEPARATOR)[0]
-                ratio = self.get_test_failure_to_cost_ratio(item)
-                module_ratios[module_path] = (
-                    module_ratios.get(module_path, 0.0) + ratio
+                failure_count = self.get_test_failure_count(item)
+                cost = self.get_test_total_duration(item)
+                # aggregate failures and costs by module
+                module_failures[module_path] = (
+                    module_failures.get(module_path, 0) + failure_count
+                )
+                module_costs[module_path] = (
+                    module_costs.get(module_path, 0.0) + cost
                 )
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
-        # sort the modules by their cumulative ratio
+        # calculate module ratios using aggregation: total_failures / total_cost
+        module_ratios: Dict[str, float] = {}
+        for module_path, total_failures in module_failures.items():
+            total_cost = max(module_costs[module_path], MIN_COST_THRESHOLD)
+            module_ratios[module_path] = total_failures / total_cost
+        # sort the modules by their aggregate ratio
         sorted_modules = sorted(
             module_ratios.keys(),
             key=lambda m: module_ratios[m],
