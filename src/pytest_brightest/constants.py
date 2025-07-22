@@ -19,7 +19,6 @@ TESTS = "tests"
 # define pytest-specific constants
 FSPATH = "fspath"
 PATH = "path"
-NODEID = "nodeid"
 NODEID_SEPARATOR = "::"
 
 # define constants for test outcomes
