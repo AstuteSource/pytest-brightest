@@ -309,13 +309,13 @@ def pytest_addoption(parser: Parser) -> None:
         "--repeat",
         type=int,
         default=1,
-        help="Set the number of times to repeat each test",
+        help="Number of times to repeat each test",
     )
     group.addoption(
         "--repeat-failed",
         type=int,
         default=0,
-        help="Set the number of times to repeat a failed test",
+        help="Number of times to repeat a failed test",
     )
     group.addoption(
         "--tie-break-by",
