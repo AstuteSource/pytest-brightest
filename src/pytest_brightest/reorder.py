@@ -102,7 +102,11 @@ class ReordererOfTests:
         # attempt to read the JSON file and parse it to extract the data
         try:
             with report_path.open("r", encoding=DEFAULT_FILE_ENCODING) as file:
-                # load the JSON data from the file
+                # load the JSON data from the file; this JSON data will contain
+                # information written by pytest-json-report and, possibly,
+                # more data that was written by this plugin; all of the data
+                # in the report should be preserved when it is saved again
+                # unless the size of the report is too big across too many runs
                 data = json.load(file)
                 # store the brightest data if it exists for historical information
                 brightest_raw = data.get(BRIGHTEST, {})
