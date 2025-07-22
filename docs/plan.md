@@ -389,20 +389,20 @@ instead of `_plugin.repeat_count`.
 
 ### Code Quality Improvements to Consider for Later (2025-07-22)
 
-3. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
+1. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
    broad `except Exception` blocks in `load_test_data` and
 `setup_json_report_plugin` with more specific exceptions like
 `json.JSONDecodeError`, `KeyError`, and `OSError` to provide more precise error
 handling.
-4. **Optimize Tie-Breaking:** Refactor the module tie-breaking logic in
+2. **Optimize Tie-Breaking:** Refactor the module tie-breaking logic in
    `src/pytest_brightest/reorder.py` to pre-calculate tie-breaking metrics for
 all modules at once, avoiding redundant calculations within the sorting
 function.
-5. **Eliminate Code Duplication:** Consolidate the logic for calculating module
+3. **Eliminate Code Duplication:** Consolidate the logic for calculating module
    failure counts and ratios. The primary calculation should reside in
 `ReordererOfTests`, and `BrightestPlugin` should call these methods to avoid
 duplication.
-6. **Reduce Code Complexity:** Break down long and complex functions like
+4. **Reduce Code Complexity:** Break down long and complex functions like
    `get_prior_data_for_reordering` and `pytest_sessionfinish` into smaller,
 more manageable helper functions.
 
@@ -437,7 +437,7 @@ code.
 2. **Establish a Baseline:** For each faulty commit, run the test suite without
    any reordering to establish a baseline execution order and failure data.
 3. **Apply Reordering Techniques:** Run the test suite with `pytest-brightest`
-enabled, using different reordering strategies:
+   enabled, using different reordering strategies:
     * `--reorder-by-technique=cost --reorder-in-direction=descending`
     * `--reorder-by-technique=failure --reorder-in-direction=descending`
     * `--reorder-by-technique=ratio --reorder-in-direction=descending`
@@ -446,7 +446,7 @@ enabled, using different reordering strategies:
     * The order in which the tests were executed.
     * The outcome of each test (pass or fail).
     * The execution time of each test.
-5. *Calculate APFD:** For each reordering technique and for the baseline,
+5. **Calculate APFD:** For each reordering technique and for the baseline,
 calculate the APFD score.
 
 **Data Analysis:**
