@@ -31,6 +31,7 @@ from .constants import (
     HIGH_BRIGHTNESS_PREFIX,
     INVERSE_COST,
     INVERSE_FAILURE,
+    INVERSE_NAME,
     MAX_RUNS,
     MODULES_WITHIN_SUITE,
     NAME,
@@ -318,6 +319,7 @@ def pytest_addoption(parser: Parser) -> None:
             RATIO,
             INVERSE_COST,
             INVERSE_FAILURE,
+            INVERSE_NAME,
         ],
         help="Tie-breaking method for reordering",
     )
