@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from pytest_brightest.plugin import BrightestPlugin
 from pytest_brightest.reorder import (
     ReordererOfTests,
     create_reorderer,
@@ -1173,3 +1174,314 @@ def test_reorder_tests_across_modules_with_ratio(mock_test_item):
     ]
     actual_order = [item.nodeid for item in items]
     assert actual_order == expected_order
+
+
+def test_reorder_modules_by_average_cost(mock_test_item, mocker):
+    """Test reordering modules by average cost across historical runs."""
+    mocker.patch("pytest_brightest.reorder.console.print")
+    reorderer = ReordererOfTests()
+    # Mock historical data with multiple runs
+    reorderer.historical_brightest_data = [
+        {
+            "data": {
+                "test_module_costs": {
+                    "mod_a.py": 1.0,
+                    "mod_b.py": 2.0,
+                    "mod_c.py": 3.0,
+                }
+            }
+        },
+        {
+            "data": {
+                "test_module_costs": {
+                    "mod_a.py": 2.0,
+                    "mod_b.py": 3.0,
+                    "mod_c.py": 1.0,
+                }
+            }
+        },
+        {
+            "data": {
+                "test_module_costs": {
+                    "mod_a.py": 3.0,
+                    "mod_b.py": 1.0,
+                    "mod_c.py": 2.0,
+                }
+            }
+        },
+    ]
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+        mock_test_item("mod_c.py::test3"),
+    ]
+    # Test descending order (highest average cost first)
+    # Average costs: mod_a=2.0, mod_b=2.0, mod_c=2.0 (all equal)
+    reorderer.reorder_modules_by_average_cost(items, ascending=False)
+    # Should maintain original order since all averages are equal
+    assert [item.nodeid for item in items] == [
+        "mod_a.py::test1",
+        "mod_b.py::test2",
+        "mod_c.py::test3",
+    ]
+
+
+def test_reorder_modules_by_average_failure(mock_test_item, mocker):
+    """Test reordering modules by average failure count across historical runs."""
+    mocker.patch("pytest_brightest.reorder.console.print")
+    reorderer = ReordererOfTests()
+    # Mock historical data with multiple runs
+    reorderer.historical_brightest_data = [
+        {
+            "data": {
+                "test_module_failures": {
+                    "mod_a.py": 0,
+                    "mod_b.py": 1,
+                    "mod_c.py": 2,
+                }
+            }
+        },
+        {
+            "data": {
+                "test_module_failures": {
+                    "mod_a.py": 1,
+                    "mod_b.py": 0,
+                    "mod_c.py": 1,
+                }
+            }
+        },
+    ]
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+        mock_test_item("mod_c.py::test3"),
+    ]
+    # Test descending order (highest average failure first)
+    # Average failures: mod_a=0.5, mod_b=0.5, mod_c=1.5
+    reorderer.reorder_modules_by_average_failure(items, ascending=False)
+    # Should order: mod_c (1.5), then mod_a and mod_b (both 0.5) in original order
+    assert [item.nodeid for item in items] == [
+        "mod_c.py::test3",
+        "mod_a.py::test1",
+        "mod_b.py::test2",
+    ]
+
+
+def test_reorder_modules_by_average_ratio(mock_test_item, mocker):
+    """Test reordering modules by average ratio across historical runs."""
+    mocker.patch("pytest_brightest.reorder.console.print")
+    reorderer = ReordererOfTests()
+    # Mock historical data with multiple runs
+    reorderer.historical_brightest_data = [
+        {
+            "data": {
+                "test_module_ratios": {
+                    "mod_a.py": 1.0,
+                    "mod_b.py": 2.0,
+                    "mod_c.py": 3.0,
+                }
+            }
+        },
+        {
+            "data": {
+                "test_module_ratios": {
+                    "mod_a.py": 3.0,
+                    "mod_b.py": 1.0,
+                    "mod_c.py": 2.0,
+                }
+            }
+        },
+    ]
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+        mock_test_item("mod_c.py::test3"),
+    ]
+    # Test ascending order (lowest average ratio first)
+    # Average ratios: mod_a=2.0, mod_b=1.5, mod_c=2.5
+    reorderer.reorder_modules_by_average_ratio(items, ascending=True)
+    # Should order: mod_b (1.5), mod_a (2.0), mod_c (2.5)
+    assert [item.nodeid for item in items] == [
+        "mod_b.py::test2",
+        "mod_a.py::test1",
+        "mod_c.py::test3",
+    ]
+
+
+def test_get_average_test_cost(mock_test_item):
+    """Test getting average test cost across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_case_costs": {"test1": 1.0, "test2": 2.0}}},
+        {"data": {"test_case_costs": {"test1": 3.0, "test2": 4.0}}},
+    ]
+    item1 = mock_test_item("test1")
+    item2 = mock_test_item("test2")
+    item3 = mock_test_item("test3")  # not in historical data
+    expected_avg_cost_1 = 2.0  # (1.0 + 3.0) / 2
+    expected_avg_cost_2 = 3.0  # (2.0 + 4.0) / 2
+    assert reorderer.get_average_test_cost(item1) == expected_avg_cost_1
+    assert reorderer.get_average_test_cost(item2) == expected_avg_cost_2
+    assert reorderer.get_average_test_cost(item3) == 0.0  # no data
+
+
+def test_get_average_test_failure(mock_test_item):
+    """Test getting average test failure count across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_case_failures": {"test1": 0, "test2": 1}}},
+        {"data": {"test_case_failures": {"test1": 1, "test2": 0}}},
+    ]
+    item1 = mock_test_item("test1")
+    item2 = mock_test_item("test2")
+    item3 = mock_test_item("test3")  # not in historical data
+    expected_avg_failure = 0.5  # (0 + 1) / 2 or (1 + 0) / 2
+    assert reorderer.get_average_test_failure(item1) == expected_avg_failure
+    assert reorderer.get_average_test_failure(item2) == expected_avg_failure
+    assert reorderer.get_average_test_failure(item3) == 0.0  # no data
+
+
+def test_get_average_test_ratio(mock_test_item):
+    """Test getting average test ratio across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_case_ratios": {"test1": 1.0, "test2": 2.0}}},
+        {"data": {"test_case_ratios": {"test1": 3.0, "test2": 4.0}}},
+    ]
+    item1 = mock_test_item("test1")
+    item2 = mock_test_item("test2")
+    item3 = mock_test_item("test3")  # not in historical data
+    expected_avg_ratio_1 = 2.0  # (1.0 + 3.0) / 2
+    expected_avg_ratio_2 = 3.0  # (2.0 + 4.0) / 2
+    assert reorderer.get_average_test_ratio(item1) == expected_avg_ratio_1
+    assert reorderer.get_average_test_ratio(item2) == expected_avg_ratio_2
+    assert reorderer.get_average_test_ratio(item3) == 0.0  # no data
+
+
+def test_get_average_module_cost():
+    """Test getting average module cost across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_module_costs": {"mod_a": 1.0, "mod_b": 2.0}}},
+        {"data": {"test_module_costs": {"mod_a": 3.0, "mod_b": 4.0}}},
+    ]
+    expected_avg_cost_a = 2.0  # (1.0 + 3.0) / 2
+    expected_avg_cost_b = 3.0  # (2.0 + 4.0) / 2
+    assert reorderer.get_average_module_cost("mod_a") == expected_avg_cost_a
+    assert reorderer.get_average_module_cost("mod_b") == expected_avg_cost_b
+    assert reorderer.get_average_module_cost("mod_c") == 0.0  # no data
+
+
+def test_get_average_module_failure():
+    """Test getting average module failure count across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_module_failures": {"mod_a": 0, "mod_b": 1}}},
+        {"data": {"test_module_failures": {"mod_a": 2, "mod_b": 1}}},
+    ]
+    assert reorderer.get_average_module_failure("mod_a") == 1.0  # (0 + 2) / 2
+    assert reorderer.get_average_module_failure("mod_b") == 1.0  # (1 + 1) / 2
+    assert reorderer.get_average_module_failure("mod_c") == 0.0  # no data
+
+
+def test_get_average_module_ratio():
+    """Test getting average module ratio across historical runs."""
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {"data": {"test_module_ratios": {"mod_a": 1.0, "mod_b": 2.0}}},
+        {"data": {"test_module_ratios": {"mod_a": 3.0, "mod_b": 4.0}}},
+    ]
+    expected_avg_ratio_a = 2.0  # (1.0 + 3.0) / 2
+    expected_avg_ratio_b = 3.0  # (2.0 + 4.0) / 2
+    assert reorderer.get_average_module_ratio("mod_a") == expected_avg_ratio_a
+    assert reorderer.get_average_module_ratio("mod_b") == expected_avg_ratio_b
+    assert reorderer.get_average_module_ratio("mod_c") == 0.0  # no data
+
+
+def test_reorder_tests_in_place_average_techniques(mock_test_item, mocker):
+    """Test reorder_tests_in_place with average techniques for all focus areas."""
+    mocker.patch("pytest_brightest.reorder.console.print")
+    reorderer = ReordererOfTests()
+    reorderer.historical_brightest_data = [
+        {
+            "data": {
+                "test_module_costs": {"mod_a.py": 1.0, "mod_b.py": 2.0},
+                "test_case_costs": {
+                    "mod_a.py::test1": 0.5,
+                    "mod_b.py::test2": 1.5,
+                },
+                "test_module_failures": {"mod_a.py": 0, "mod_b.py": 1},
+                "test_case_failures": {
+                    "mod_a.py::test1": 0,
+                    "mod_b.py::test2": 1,
+                },
+                "test_module_ratios": {"mod_a.py": 0.0, "mod_b.py": 0.5},
+                "test_case_ratios": {
+                    "mod_a.py::test1": 0.0,
+                    "mod_b.py::test2": 0.67,
+                },
+            }
+        }
+    ]
+    # Test modules-within-suite focus with average-cost
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+    ]
+    reorderer.reorder_tests_in_place(
+        items, "average-cost", "descending", "modules-within-suite"
+    )
+    assert [item.nodeid for item in items] == [
+        "mod_b.py::test2",
+        "mod_a.py::test1",
+    ]
+    # Test tests-within-module focus with average-failure
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+    ]
+    reorderer.reorder_tests_in_place(
+        items, "average-failure", "descending", "tests-within-module"
+    )
+    # Items should be ordered by their individual average failure counts
+    # Test tests-within-suite focus with average-ratio
+    items = [
+        mock_test_item("mod_a.py::test1"),
+        mock_test_item("mod_b.py::test2"),
+    ]
+    reorderer.reorder_tests_in_place(
+        items, "average-ratio", "descending", "tests-within-suite"
+    )
+    assert [item.nodeid for item in items] == [
+        "mod_b.py::test2",
+        "mod_a.py::test1",
+    ]
+
+
+def test_plugin_configure_with_average_techniques(mocker):
+    """Test that plugin correctly configures with average reordering techniques."""
+    # Mock config object with average technique
+    mock_config = mocker.Mock()
+    mock_config.getoption.side_effect = lambda opt, default=None: {
+        "--brightest": True,
+        "--reorder-by-technique": "average-cost",
+        "--reorder-by-focus": "modules-within-suite",
+        "--reorder-in-direction": "descending",
+        "--tie-break-by": None,
+        "--repeat": 1,
+        "--repeat-failed": 0,
+        "--max-test-runs": None,
+    }.get(opt, default)
+    plugin = BrightestPlugin()
+    # Mock the setup functions
+    mocker.patch(
+        "pytest_brightest.plugin.setup_json_report_plugin", return_value=True
+    )
+    mocker.patch("pytest_brightest.plugin.ReordererOfTests")
+    mocker.patch("pytest_brightest.plugin.console.print")
+    plugin.configure(mock_config)
+    # Check that reordering is enabled for average techniques
+    assert plugin.reorder_enabled is True
+    assert plugin.technique == "average-cost"
+    assert plugin.focus == "modules-within-suite"
+    assert plugin.direction == "descending"

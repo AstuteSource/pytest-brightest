@@ -553,6 +553,9 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
+        console.print(
+            f"{FLASHLIGHT_PREFIX} Computing average costs across {len(self.historical_brightest_data)} historical runs"
+        )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
             self.get_average_module_cost,
@@ -563,8 +566,9 @@ class ReordererOfTests:
         if sorted_modules:
             console.print()
         for module in sorted_modules:
+            avg_cost = self.get_average_module_cost(module)
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average cost {self.get_average_module_cost(module):.5f}"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average cost {avg_cost:.5f}"
             )
             reordered_items.extend(module_items[module])
         items[:] = reordered_items
@@ -584,6 +588,9 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
+        console.print(
+            f"{FLASHLIGHT_PREFIX} Computing average failures across {len(self.historical_brightest_data)} historical runs"
+        )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
             self.get_average_module_failure,
@@ -594,8 +601,9 @@ class ReordererOfTests:
         if sorted_modules:
             console.print()
         for module in sorted_modules:
+            avg_failure = self.get_average_module_failure(module)
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average failure count {self.get_average_module_failure(module):.5f}"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average failure count {avg_failure:.5f}"
             )
             reordered_items.extend(module_items[module])
         items[:] = reordered_items
@@ -615,6 +623,9 @@ class ReordererOfTests:
                 if module_path not in module_items:
                     module_items[module_path] = []
                 module_items[module_path].append(item)
+        console.print(
+            f"{FLASHLIGHT_PREFIX} Computing average ratios across {len(self.historical_brightest_data)} historical runs"
+        )
         sorted_modules = self._sort_modules_with_tie_breaking(
             list(module_items.keys()),
             self.get_average_module_ratio,
@@ -625,8 +636,9 @@ class ReordererOfTests:
         if sorted_modules:
             console.print()
         for module in sorted_modules:
+            avg_ratio = self.get_average_module_ratio(module)
             console.print(
-                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average ratio {self.get_average_module_ratio(module):.5f}"
+                f"{FLASHLIGHT_PREFIX} Module {module} contains tests with average ratio {avg_ratio:.5f}"
             )
             reordered_items.extend(module_items[module])
         items[:] = reordered_items

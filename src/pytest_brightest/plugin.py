@@ -164,7 +164,15 @@ class BrightestPlugin:
                     f"{HIGH_BRIGHTNESS_PREFIX} Warning: --reorder-in-direction is ignored when --reorder-by-technique is 'shuffle'"
                 )
         # if the reordering technique is chosen, then configure the reorderer
-        elif self.technique in [NAME, COST, FAILURE, RATIO]:
+        elif self.technique in [
+            NAME,
+            COST,
+            FAILURE,
+            RATIO,
+            AVERAGE_COST,
+            AVERAGE_FAILURE,
+            AVERAGE_RATIO,
+        ]:
             self.reorder_enabled = True
             self.reorder_by = self.technique
             self.reorder = self.direction
@@ -236,6 +244,9 @@ class BrightestPlugin:
             and self.reorder
             and self.focus
         ):
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Beginning reordering: technique={self.reorder_by}, focus={self.focus}, direction={self.reorder}"
+            )
             self.reorderer.reorder_tests_in_place(
                 items,
                 self.reorder_by,
