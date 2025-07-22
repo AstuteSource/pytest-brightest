@@ -381,11 +381,14 @@ Note: A software agent can add details about their plan in this subsection.
 
 ### Code Quality Improvements (2025-07-22)
 
-1. **Remove Redundant Constant:** Delete the duplicate definition of `NODEID`
+1. [X] **Remove Redundant Constant:** Delete the duplicate definition of `NODEID`
    in `src/pytest_brightest/constants.py`.
-2. **Correct Variable Usage:** In `src/pytest_brightest/plugin.py`, in the
+2. [X] **Correct Variable Usage:** In `src/pytest_brightest/plugin.py`, in the
    `configure` method, change the diagnostic message to use `self.repeat_count`
 instead of `_plugin.repeat_count`.
+
+### Code Quality Improvements to Consider for Later (2025-07-22)
+
 3. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
    broad `except Exception` blocks in `load_test_data` and
 `setup_json_report_plugin` with more specific exceptions like
