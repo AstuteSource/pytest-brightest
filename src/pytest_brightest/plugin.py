@@ -162,11 +162,17 @@ class BrightestPlugin:
         # techniques for performing repeats of the test cases
         if self.repeat_count > 1:
             console.print(
-                f"{FLASHLIGHT_PREFIX} Repeating all tests {self.repeat_count} times"
+                f"{FLASHLIGHT_PREFIX} Repeating the run of each test {self.repeat_count} times"
+            )
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Cost data saved from run {_plugin.repeat_count} of each test"
             )
         if self.repeat_failed_count > 0:
             console.print(
                 f"{FLASHLIGHT_PREFIX} Repeating each failed tests {self.repeat_failed_count} times"
+            )
+            console.print(
+                f"{FLASHLIGHT_PREFIX} Cost data saved from run {_plugin.repeat_count} of a failed test"
             )
 
     def record_test_failure(self, nodeid: str) -> None:
