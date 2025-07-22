@@ -56,12 +56,19 @@ SHUFFLE = "shuffle"
 NAME = "name"
 COST = "cost"
 RATIO = "ratio"
+AVERAGE_COST = "average-cost"
+AVERAGE_FAILURE = "average-failure"
+AVERAGE_RATIO = "average-ratio"
 
 # define constants for tie-breaking
 TIE_BREAK_BY = "tie_break_by"
 INVERSE_COST = "inverse-cost"
 INVERSE_FAILURE = "inverse-failure"
 INVERSE_NAME = "inverse-name"
+INVERSE_RATIO = "inverse-ratio"
+INVERSE_AVERAGE_COST = "inverse-average-cost"
+INVERSE_AVERAGE_FAILURE = "inverse-average-failure"
+INVERSE_AVERAGE_RATIO = "inverse-average-ratio"
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"

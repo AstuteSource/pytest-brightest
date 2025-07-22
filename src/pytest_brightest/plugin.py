@@ -15,6 +15,9 @@ from rich.console import Console
 
 from .constants import (
     ASCENDING,
+    AVERAGE_COST,
+    AVERAGE_FAILURE,
+    AVERAGE_RATIO,
     BRIGHTEST,
     COST,
     DATA,
@@ -29,9 +32,13 @@ from .constants import (
     FLASHLIGHT_PREFIX,
     FOCUS,
     HIGH_BRIGHTNESS_PREFIX,
+    INVERSE_AVERAGE_COST,
+    INVERSE_AVERAGE_FAILURE,
+    INVERSE_AVERAGE_RATIO,
     INVERSE_COST,
     INVERSE_FAILURE,
     INVERSE_NAME,
+    INVERSE_RATIO,
     MAX_RUNS,
     MODULES_WITHIN_SUITE,
     NAME,
@@ -285,7 +292,16 @@ def pytest_addoption(parser: Parser) -> None:
     )
     group.addoption(
         "--reorder-by-technique",
-        choices=[SHUFFLE, NAME, COST, FAILURE, RATIO],
+        choices=[
+            SHUFFLE,
+            NAME,
+            COST,
+            FAILURE,
+            RATIO,
+            AVERAGE_COST,
+            AVERAGE_FAILURE,
+            AVERAGE_RATIO,
+        ],
         default=None,
         help="Reorder tests by shuffling, name, cost, failure, or ratio",
     )
@@ -328,6 +344,13 @@ def pytest_addoption(parser: Parser) -> None:
             INVERSE_COST,
             INVERSE_FAILURE,
             INVERSE_NAME,
+            INVERSE_RATIO,
+            AVERAGE_COST,
+            AVERAGE_FAILURE,
+            AVERAGE_RATIO,
+            INVERSE_AVERAGE_COST,
+            INVERSE_AVERAGE_FAILURE,
+            INVERSE_AVERAGE_RATIO,
         ],
         help="Tie-breaking method for reordering",
     )
