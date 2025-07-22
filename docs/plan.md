@@ -458,3 +458,81 @@ calculate the APFD score.
 3. **Draw Conclusions:** Based on the analysis, draw conclusions about the
    effectiveness of each reordering technique implemented in
 `pytest-brightest`.
+
+### Novel Experimental Evaluation Plan (2025-07-22)
+
+**Goal:** To devise an easier yet equally convincing experimental plan for
+evaluating the `pytest-brightest` plugin.
+
+**Method:** This plan leverages **mutation testing** to synthetically and
+realistically introduce faults into a codebase. This creates a large, controlled
+set of faulty program versions (mutants) to test against, eliminating the need
+for manual mining of Git history.
+
+**Metrics:**
+
+* **Mutation Score:** The percentage of killed mutants (`killed / (total -
+  unviable)`). A higher score indicates a more effective test suite.
+* **Average Precision of Fault Detection (APFD):** As defined in the previous
+  plan, this measures how quickly a reordered test suite detects faults (i.e.,
+  kills mutants).
+
+**Tools:**
+
+* **mutmut:** A mutation testing tool for Python that is easy to set up and
+  use.
+
+**Project Selection:**
+
+1. **Identify Candidate Projects:** Search GitHub for open-source Python
+   projects that use `pytest` for testing.
+2. **Filter by Criteria:**
+   * The project must have a high-quality test suite (e.g., > 80% code
+     coverage). This ensures that most mutants will be killed by at least one
+     test.
+   * The project's test suite should be runnable with `pytest`.
+
+**Methodology:**
+
+1. **Setup:** For each selected project, install `mutmut` and configure it to
+   work with the project's source code and test suite.
+2. **Generate Mutants:** Run `mutmut` to generate a set of mutants. Each
+   mutant represents a single, small change to the source code.
+3. **Identify Killing Tests:** For each mutant, run `mutmut run` to identify
+   which tests kill it. This creates a mapping from each mutant to its killing
+   test(s).
+4. **Establish a Baseline:** For each mutant, run its killing test(s) along
+   with all other tests in the original, un-reordered test suite. Record the
+   execution order and the position of the first killing test.
+5. **Apply Reordering Techniques:** For each mutant, run the full test suite
+   with `pytest-brightest` enabled, using the following reordering strategies:
+   * `--reorder-by-technique=cost --reorder-in-direction=descending`
+   * `--reorder-by-technique=failure --reorder-in-direction=descending`
+   * `--reorder-by-technique=ratio --reorder-in-direction=descending`
+   * `--reorder-by-technique=shuffle` (as a random control)
+6. **Collect Data:** For each run, record the following:
+   * The order in which the tests were executed.
+   * The position of the first test that kills the mutant.
+7. **Calculate APFD:** For each reordering technique and for the baseline,
+   calculate the APFD score across all mutants.
+
+**Data Analysis:**
+
+1. **Compare APFD Scores:** Compare the APFD scores of the different
+   reordering techniques against the baseline and against each other.
+2. **Statistical Analysis:** Use statistical tests (e.g., t-tests) to
+   determine if the differences in APFD scores are statistically significant.
+3. **Draw Conclusions:** Based on the analysis, draw conclusions about the
+   effectiveness of each reordering technique in `pytest-brightest` at
+   accelerating the detection of synthetically generated faults.
+
+**Advantages of this Approach:**
+
+* **Automation:** The process of generating faults (mutants) is fully
+  automated.
+* **Control:** The experiment is highly controlled, as each mutant represents a
+  single, known fault.
+* **Scalability:** It is easy to generate a large number of mutants, providing
+  a statistically significant sample size.
+* **Realism:** Mutation testing is widely regarded as a realistic way to model
+  real-world programming errors.
