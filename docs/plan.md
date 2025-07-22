@@ -378,3 +378,80 @@ Note: A software agent can add details about their plan in this subsection.
 - Cost normalization: use minimum threshold (0.001) to prevent division by zero for very fast tests
 - Preserve existing behavior: all current reordering techniques must continue working unchanged
 - Diagnostic output: provide clear information about calculated ratios during reordering
+
+### Code Quality Improvements (2025-07-22)
+
+1. **Remove Redundant Constant:** Delete the duplicate definition of `NODEID`
+   in `src/pytest_brightest/constants.py`.
+2. **Correct Variable Usage:** In `src/pytest_brightest/plugin.py`, in the
+   `configure` method, change the diagnostic message to use `self.repeat_count`
+instead of `_plugin.repeat_count`.
+3. **Refine Exception Handling:** In `src/pytest_brightest/reorder.py`, replace
+   broad `except Exception` blocks in `load_test_data` and
+`setup_json_report_plugin` with more specific exceptions like
+`json.JSONDecodeError`, `KeyError`, and `OSError` to provide more precise error
+handling.
+4. **Optimize Tie-Breaking:** Refactor the module tie-breaking logic in
+   `src/pytest_brightest/reorder.py` to pre-calculate tie-breaking metrics for
+all modules at once, avoiding redundant calculations within the sorting
+function.
+5. **Eliminate Code Duplication:** Consolidate the logic for calculating module
+   failure counts and ratios. The primary calculation should reside in
+`ReordererOfTests`, and `BrightestPlugin` should call these methods to avoid
+duplication.
+6. **Reduce Code Complexity:** Break down long and complex functions like
+   `get_prior_data_for_reordering` and `pytest_sessionfinish` into smaller,
+more manageable helper functions.
+
+### Experimental Evaluation Plan (2025-07-22)
+
+**Goal:** To empirically evaluate the effectiveness of the `pytest-brightest`
+plugin in improving the regression testing process.
+
+**Metrics:**
+
+* **Average Precision of Fault Detection (APFD):** This metric measures how
+quickly a reordered test suite can detect faults. A higher APFD value indicates
+a more effective test case prioritization technique. APFD is calculated as:
+`1 - (sum of ranks of first failing test for each fault) / (number of faults *
+number of tests) + 1 / (2 * number of tests)`
+
+**Project Selection:**
+
+1. **Identify Candidate Projects:** Search GitHub for open-source Python
+    projects that use `pytest` for testing.
+2. **Filter by Criteria:**
+    * The project must have a non-trivial test suite (e.g., > 50 tests).
+    * The project must have a history of failing builds on a CI service
+    (e.g., GitHub Actions), which indicates the presence of real-world faults.
+    * The project's test suite should be runnable with `pytest`.
+
+**Methodology:**
+
+1. **Select Faulty Commits:** For each selected project, identify commits where
+   the test suite failed. These commits represent the "faulty" versions of the
+code.
+2. **Establish a Baseline:** For each faulty commit, run the test suite without
+   any reordering to establish a baseline execution order and failure data.
+3. **Apply Reordering Techniques:** Run the test suite with `pytest-brightest`
+enabled, using different reordering strategies:
+    * `--reorder-by-technique=cost --reorder-in-direction=descending`
+    * `--reorder-by-technique=failure --reorder-in-direction=descending`
+    * `--reorder-by-technique=ratio --reorder-in-direction=descending`
+    * `--reorder-by-technique=shuffle` (as a random control)
+4. **Collect Data:** For each run, record the following:
+    * The order in which the tests were executed.
+    * The outcome of each test (pass or fail).
+    * The execution time of each test.
+5. *Calculate APFD:** For each reordering technique and for the baseline,
+calculate the APFD score.
+
+**Data Analysis:**
+
+1. **Compare APFD Scores:** Compare the APFD scores of the different reordering
+   techniques against the baseline and against each other.
+2. **Statistical Analysis:** Use statistical tests (e.g., t-tests) to determine
+   if the differences in APFD scores are statistically significant.
+3. **Draw Conclusions:** Based on the analysis, draw conclusions about the
+   effectiveness of each reordering technique implemented in
+`pytest-brightest`.
