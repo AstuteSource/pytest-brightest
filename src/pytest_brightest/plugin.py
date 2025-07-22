@@ -114,7 +114,7 @@ class BrightestPlugin:
         # extract historical data about test execution; note that the
         # reorderer is now created in all modes of execution
         if json_setup_success and self.brightest_json_file:
-            self.reorderer = ReordererOfTests(self.brightest_json_file)
+            self.reorderer = ReordererOfTests()
         # extract the configuration options for reordering and shuffling
         self.technique = config.getoption("--reorder-by-technique")
         self.focus = config.getoption("--reorder-by-focus")
@@ -409,11 +409,13 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
             getattr(item, NODEID, EMPTY_STRING) for item in session.items
         ],
     }
-    # collect test case costs and module costs
+    # collect test case costs, failures, and ratios for all techniques
     test_case_costs: Dict[str, float] = {}
     test_module_costs: Dict[str, float] = {}
     test_case_failures: Dict[str, int] = {}
     test_module_failures: Dict[str, int] = {}
+    test_case_ratios: Dict[str, float] = {}
+    test_module_ratios: Dict[str, float] = {}
     # if reorderer is available, get test performance data
     if _plugin.reorderer:
         # reload the test data to get the current session's performance data
@@ -424,10 +426,14 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
         original_items = (
             _plugin.session_items if _plugin.session_items else session.items
         )
-        # collect cost data for each test case
+        # collect aggregated data for module ratios
+        module_failure_counts: Dict[str, int] = {}
+        module_cost_totals: Dict[str, float] = {}
+        # collect data for each test case
         for item in original_items:
             nodeid = getattr(item, NODEID, EMPTY_STRING)
             if nodeid:
+                # collect cost data
                 cost = _plugin.reorderer.get_test_total_duration(item)
                 test_case_costs[nodeid] = cost
                 # aggregate module costs
@@ -443,6 +449,22 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
                 test_module_failures[module_path] = (
                     test_module_failures.get(module_path, 0) + failure_count
                 )
+                # collect ratio data using current session failure counts
+                # calculate ratio for this test: current_failures / cost
+                safe_cost = max(cost, 0.00001)  # avoid division by zero
+                ratio = failure_count / safe_cost
+                test_case_ratios[nodeid] = ratio
+                # aggregate data for module ratios using current session data
+                module_failure_counts[module_path] = (
+                    module_failure_counts.get(module_path, 0) + failure_count
+                )
+                module_cost_totals[module_path] = (
+                    module_cost_totals.get(module_path, 0.0) + cost
+                )
+        # calculate module ratios using aggregation method
+        for module_path, total_failures in module_failure_counts.items():
+            total_cost = max(module_cost_totals.get(module_path, 0.0), 0.00001)
+            test_module_ratios[module_path] = total_failures / total_cost
     # add current session failure data if available
     if _plugin.current_session_failures:
         test_module_failures.update(_plugin.current_session_failures)
@@ -461,6 +483,12 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
     brightest_data[DATA][TEST_MODULE_FAILURES] = _sort_dict_by_value(
         test_module_failures, str(_plugin.direction)
     )
+    brightest_data[DATA][TEST_CASE_RATIOS] = _sort_dict_by_value(
+        test_case_ratios, str(_plugin.direction)
+    )
+    brightest_data[DATA][TEST_MODULE_RATIOS] = _sort_dict_by_value(
+        test_module_ratios, str(_plugin.direction)
+    )
     # add prior data that was used for reordering this session
     if (
         _plugin.reorderer
@@ -472,16 +500,9 @@ def _get_brightest_data(session: Session) -> Dict[str, Any]:
             _plugin.session_items, _plugin.technique, _plugin.focus
         )
         # merge prior data with current data, but don't overwrite the new structure
-        # apply consistent sorting to ratio data like other data types
         for key, value in prior_data.items():
             if key not in brightest_data[DATA]:
-                if key in [TEST_CASE_RATIOS, TEST_MODULE_RATIOS]:
-                    # sort ratio data consistently with costs and failures
-                    brightest_data[DATA][key] = _sort_dict_by_value(
-                        value, str(_plugin.direction)
-                    )
-                else:
-                    brightest_data[DATA][key] = value
+                brightest_data[DATA][key] = value
     return brightest_data
 
 

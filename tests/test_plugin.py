@@ -490,6 +490,8 @@ class TestHooks:
         mock_plugin.reorderer.get_test_total_duration.return_value = (
             0.1  # example return value
         )
+        mock_plugin.reorderer.get_test_failure_count.return_value = 0
+        mock_plugin.reorderer.get_test_failure_to_cost_ratio.return_value = 0.0
         mocker.patch("pathlib.Path.exists", return_value=True)
         mocker.patch("json.load", return_value={"tests": []})
         mock_json_dump = mocker.patch("json.dump")
@@ -563,6 +565,8 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
     mock_plugin.reorderer = mocker.MagicMock()
     mock_plugin.reorderer.get_test_total_duration.return_value = 1.5
     mock_plugin.reorderer.get_test_outcome.return_value = "passed"
+    mock_plugin.reorderer.get_test_failure_count.return_value = 0
+    mock_plugin.reorderer.get_test_failure_to_cost_ratio.return_value = 0.0
     mock_plugin.current_session_failures = {}
     mock_session.items = [
         mock_test_item("mod1::test1"),
@@ -584,6 +588,8 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
     assert "test_module_costs" in data["data"]
     assert "test_case_failures" in data["data"]
     assert "test_module_failures" in data["data"]
+    assert "test_case_ratios" in data["data"]
+    assert "test_module_ratios" in data["data"]
     # check testcases field
     assert data["testcases"] == ["mod1::test1", "mod2::test2"]
     # check values
@@ -593,6 +599,47 @@ def test_get_brightest_data_structure(mocker, mock_test_item):
     assert data["seed"] == 42
     assert data["repeat_count"] == 3
     assert data["repeat_failed_count"] == 2
+
+
+def test_get_brightest_data_includes_ratio_data(mocker, mock_test_item):
+    """Test that _get_brightest_data always includes ratio data regardless of technique."""
+    mock_plugin = mocker.patch(
+        "pytest_brightest.plugin._plugin", autospec=True
+    )
+    mock_session = mocker.MagicMock()
+    mock_plugin.technique = "cost"  # using cost technique, not ratio
+    mock_plugin.focus = "tests-within-suite"
+    mock_plugin.direction = "descending"
+    mock_plugin.seed = None
+    mock_plugin.repeat_count = 1
+    mock_plugin.repeat_failed_count = 0
+    mock_plugin.reorderer = mocker.MagicMock()
+    mock_plugin.reorderer.get_test_total_duration.return_value = 0.5
+    mock_plugin.reorderer.get_test_outcome.return_value = (
+        "failed"  # current session: failed
+    )
+    mock_plugin.reorderer.get_test_failure_count.return_value = (
+        2  # historical failures
+    )
+    mock_plugin.reorderer.get_test_failure_to_cost_ratio.return_value = (
+        2.0  # now using current session: 1/0.5 = 2.0
+    )
+    mock_plugin.current_session_failures = {}
+    mock_plugin.session_items = None
+    mock_session.items = [
+        mock_test_item("test_module.py::test_function"),
+    ]
+    data = _get_brightest_data(mock_session)
+    # verify that ratio data is present even when using cost technique
+    assert "test_case_ratios" in data["data"]
+    assert "test_module_ratios" in data["data"]
+    # verify ratio values are calculated correctly from current session
+    # current session: 1 failure, cost 0.5 → ratio = 1/0.5 = 2.0
+    assert (
+        data["data"]["test_case_ratios"]["test_module.py::test_function"]
+        == 2.0
+    )
+    assert data["data"]["test_module_ratios"]["test_module.py"] == 2.0
 
 
 def test_pytest_sessionfinish_runcount_increment(mocker, mock_config):
