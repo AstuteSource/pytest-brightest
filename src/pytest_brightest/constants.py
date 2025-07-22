@@ -62,7 +62,6 @@ RATIO = "ratio"
 TIE_BREAK_BY = "tie_break_by"
 INVERSE_COST = "inverse-cost"
 INVERSE_FAILURE = "inverse-failure"
-DEFAULT_TIE_BREAKERS: list[str] = []
 
 # define constants for reordering focus
 MODULES_WITHIN_SUITE = "modules-within-suite"
@@ -100,8 +99,6 @@ TEST_CASE_RATIOS = "test_case_ratios"
 TEST_MODULE_RATIOS = "test_module_ratios"
 
 # define constants for ratio calculation
-FAILURE_BASE_WEIGHT = 1
-FAILURE_MULTIPLIER = 10
 MIN_COST_THRESHOLD = 0.00001
 
 # define constants for command-line arguments in JSON report
