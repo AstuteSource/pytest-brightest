@@ -244,9 +244,6 @@ class BrightestPlugin:
             and self.reorder
             and self.focus
         ):
-            console.print(
-                f"{FLASHLIGHT_PREFIX} Beginning reordering: technique={self.reorder_by}, focus={self.focus}, direction={self.reorder}"
-            )
             self.reorderer.reorder_tests_in_place(
                 items,
                 self.reorder_by,
